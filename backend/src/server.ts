@@ -4,9 +4,12 @@ import { config } from './utils/config';
 import { closeDatabase } from './utils/db';
 import { closeCache } from './services/cache';
 
-const PORT = config.port || 5000;
+// Ensure PORT is a number and set to 5000 explicitly
+const PORT = 5000;
 
-const server = app.listen(PORT, () => {
+// Listen on all network interfaces (0.0.0.0) to be accessible inside Docker/containers
+// This is important for CI environments where services run in different containers
+const server = app.listen(PORT, '0.0.0.0', () => {
   logger.info(`Server running in ${config.nodeEnv} mode on port ${PORT}`);
 });
 

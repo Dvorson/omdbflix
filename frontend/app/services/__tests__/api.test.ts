@@ -108,7 +108,7 @@ describe('API Service', () => {
       
       const result = await api.searchMovies({ query: 'shawshank' });
       expect(result).toEqual(mockResponse);
-      expect(mockedAxiosInstance.get).toHaveBeenCalledWith('/media/search', { params: { query: 'shawshank' } });
+      expect(mockedAxiosInstance.get).toHaveBeenCalledWith('/api/media/search', { params: { query: 'shawshank' } });
     });
 
     it('searchMovies: throws error on failure', async () => {
@@ -124,7 +124,7 @@ describe('API Service', () => {
       
       const result = await api.getMovieDetails('tt0111161');
       expect(result).toEqual(mockMovie);
-      expect(mockedAxiosInstance.get).toHaveBeenCalledWith('/media/tt0111161');
+      expect(mockedAxiosInstance.get).toHaveBeenCalledWith('/api/media/tt0111161');
     });
 
     it('getMovieDetails: throws error on failure', async () => {
@@ -144,7 +144,7 @@ describe('API Service', () => {
 
       const result = await api.loginUser(credentials);
       expect(result).toEqual(mockResponse);
-      expect(mockedAxiosInstance.post).toHaveBeenCalledWith('/auth/login', credentials);
+      expect(mockedAxiosInstance.post).toHaveBeenCalledWith('/api/auth/login', credentials);
       expect(localStorage.setItem).toHaveBeenCalledWith('token', 'fake-jwt-token');
     });
 
@@ -167,7 +167,7 @@ describe('API Service', () => {
 
       const result = await api.registerUser(userData);
       expect(result).toEqual(mockResponse);
-      expect(mockedAxiosInstance.post).toHaveBeenCalledWith('/auth/register', userData);
+      expect(mockedAxiosInstance.post).toHaveBeenCalledWith('/api/auth/register', userData);
       expect(localStorage.setItem).toHaveBeenCalledWith('token', 'new-jwt-token');
     });
 
@@ -194,7 +194,7 @@ describe('API Service', () => {
 
       const result = await api.checkAuthStatus();
       expect(result).toEqual(mockResponse);
-      expect(mockedAxiosInstance.get).toHaveBeenCalledWith('/auth/status');
+      expect(mockedAxiosInstance.get).toHaveBeenCalledWith('/api/auth/status');
     });
 
     it('checkAuthStatus: returns unauthenticated if no token exists locally', async () => {
@@ -212,7 +212,7 @@ describe('API Service', () => {
 
       const result = await api.checkAuthStatus();
       expect(result).toEqual({ isAuthenticated: false, user: null });
-      expect(mockedAxiosInstance.get).toHaveBeenCalledWith('/auth/status');
+      expect(mockedAxiosInstance.get).toHaveBeenCalledWith('/api/auth/status');
       expect(localStorage.removeItem).toHaveBeenCalledWith('token');
     });
     
@@ -239,7 +239,7 @@ describe('API Service', () => {
 
       const result = await api.logoutUser();
       expect(result).toEqual(mockResponse);
-      expect(mockedAxiosInstance.post).toHaveBeenCalledWith('/auth/logout');
+      expect(mockedAxiosInstance.post).toHaveBeenCalledWith('/api/auth/logout');
       expect(localStorage.removeItem).toHaveBeenCalledWith('token');
     });
     
@@ -249,7 +249,7 @@ describe('API Service', () => {
       mockedAxiosInstance.post.mockRejectedValueOnce(error);
       
       await expect(api.logoutUser()).rejects.toThrow('Server Down');
-      expect(mockedAxiosInstance.post).toHaveBeenCalledWith('/auth/logout');
+      expect(mockedAxiosInstance.post).toHaveBeenCalledWith('/api/auth/logout');
       expect(localStorage.removeItem).toHaveBeenCalledWith('token'); 
       expect(console.error).toHaveBeenCalledWith('Logout error:', error);
     });
@@ -267,7 +267,7 @@ describe('API Service', () => {
 
       const result = await api.getFavorites();
       expect(result).toEqual(mockResponse);
-      expect(mockedAxiosInstance.get).toHaveBeenCalledWith('/favorites');
+      expect(mockedAxiosInstance.get).toHaveBeenCalledWith('/api/favorites');
     });
     
     it('getFavorites: returns empty array on API error', async () => {
@@ -287,7 +287,7 @@ describe('API Service', () => {
 
       const result = await api.addFavorite(movieId);
       expect(result).toEqual(mockResponse);
-      expect(mockedAxiosInstance.post).toHaveBeenCalledWith('/favorites', { movieId });
+      expect(mockedAxiosInstance.post).toHaveBeenCalledWith('/api/favorites', { movieId });
     });
     
     it('addFavorite: throws error on failure', async () => {
@@ -307,7 +307,7 @@ describe('API Service', () => {
 
       const result = await api.removeFavorite(movieId);
       expect(result).toEqual(mockResponse);
-      expect(mockedAxiosInstance.delete).toHaveBeenCalledWith(`/favorites/${movieId}`);
+      expect(mockedAxiosInstance.delete).toHaveBeenCalledWith(`/api/favorites/${movieId}`);
     });
     
     it('removeFavorite: throws error on failure', async () => {
