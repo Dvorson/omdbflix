@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
 import FavoritesPage from '../page';
@@ -13,7 +13,10 @@ jest.mock('next/navigation');
 // Mock next/image
 jest.mock('next/image', () => ({
   __esModule: true,
-  default: (props: any) => <img {...props} />,
+  default: (props: { src: string; alt?: string; [key: string]: unknown }) => {
+    const { src, alt = "Movie poster", ...rest } = props;
+    return <img src={src} alt={alt} {...rest} />;
+  },
 }));
 
 // Mock API functions

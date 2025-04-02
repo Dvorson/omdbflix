@@ -2,7 +2,6 @@ import React from 'react';
 import { Metadata } from 'next';
 import { getMovieDetails } from '../services/api';
 import DetailClient from '../components/DetailClient';
-import { MovieDetails } from '@repo/types';
 
 type Params = {
   id: string;

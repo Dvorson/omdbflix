@@ -1,7 +1,6 @@
 'use client';
 
 import React, { createContext, useState, useContext, useEffect, ReactNode, useCallback } from 'react';
-import axios from 'axios';
 import { 
     loginUser as apiLoginUser, 
     registerUser as apiRegisterUser, 
@@ -71,7 +70,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const login = async (credentials: { email: string; password: string }) => {
     setIsLoading(true);
     try {
-      const { token, user: loggedInUser } = await apiLoginUser(credentials);
+      const { user: loggedInUser } = await apiLoginUser(credentials);
       // apiLoginUser already calls setToken internally via api.ts
       setUser(loggedInUser);
       setIsAuthenticated(true);
@@ -91,7 +90,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const register = async (userData: { email: string; password: string; name: string }) => {
     setIsLoading(true);
     try {
-      const { token, user: registeredUser } = await apiRegisterUser(userData);
+      const { user: registeredUser } = await apiRegisterUser(userData);
       // apiRegisterUser already calls setToken internally via api.ts
       setUser(registeredUser);
       setIsAuthenticated(true);

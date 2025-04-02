@@ -7,7 +7,6 @@ import MovieGrid from './components/MovieGrid';
 import Pagination from './components/Pagination';
 import { searchMovies } from './services/api';
 import { Movie, SearchParams } from '@repo/types';
-import { useMediaSearch } from './hooks/useMediaSearch';
 
 export default function Home() {
   const [movies, setMovies] = useState<Movie[]>([]);

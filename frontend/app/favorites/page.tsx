@@ -72,7 +72,7 @@ export default function FavoritesPage() {
       <h1 className="mb-8 text-3xl font-bold">Your Favorites</h1>
       {favorites.length === 0 ? (
         <div>
-          <p>You haven't added any favorites yet.</p>
+          <p>You haven&apos;t added any favorites yet.</p>
           <p className="mt-2">Go search for some movies</p>
         </div>
       ) : (

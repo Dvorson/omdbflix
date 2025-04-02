@@ -3,7 +3,6 @@ import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import MovieCard from '../MovieCard';
 import { MovieDetails } from '@repo/types'; // Use MovieDetails for full type
-import { AuthProvider } from '../../contexts/AuthContext';
 
 // Mock Next.js components
 jest.mock('next/image', () => ({
@@ -37,7 +36,7 @@ jest.mock('axios', () => ({
 // Mock FavoriteButton directly
 jest.mock('../FavoriteButton', () => ({
   __esModule: true,
-  default: ({ movie }: { movie: MovieDetails }) => <button data-testid="mock-favorite-button">Fav</button>,
+  default: ({ _movie }: { _movie: MovieDetails }) => <button data-testid="mock-favorite-button">Fav</button>,
 }));
 
 // Mock useAuth hook

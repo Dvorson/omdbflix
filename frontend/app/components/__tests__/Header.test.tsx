@@ -1,5 +1,5 @@
 import React, { ReactNode } from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
 import Header from '../Header';
@@ -14,7 +14,7 @@ jest.mock('next/navigation', () => ({
 jest.mock('next/link', () => {
   return {
     __esModule: true,
-    default: ({ href, children, ...props }: { href: string; children: React.ReactNode; [key: string]: any }) => (
+    default: ({ href, children, ...props }: { href: string; children: React.ReactNode; [key: string]: unknown }) => (
       <a href={href} {...props}>{children}</a>
     ),
   };

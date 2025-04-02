@@ -8,21 +8,6 @@ interface SearchFormProps {
   isLoading: boolean;
 }
 
-/**
- * Validates if a year value is valid (4-digit number between 1900 and current year + 5)
- */
-function isValidYear(year: string): boolean {
-  if (!year) return false;
-  
-  // Must be exactly 4 digits
-  if (!/^\d{4}$/.test(year)) return false;
-  
-  // Must be in a reasonable range
-  const yearNum = parseInt(year, 10);
-  const currentYear = new Date().getFullYear();
-  return yearNum >= 1900 && yearNum <= currentYear + 5;
-}
-
 const SearchForm: React.FC<SearchFormProps> = ({ onSearch, isLoading }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [type, setType] = useState('');
