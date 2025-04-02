@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { searchMedia, getMediaById, MediaServiceError } from '../services/mediaService';
 import { logger } from '../utils/logger';
+import { validateYearParameter } from '../utils/validation';
 
 /**
  * Controller for handling media search requests
@@ -18,11 +19,22 @@ export async function searchMediaController(req: Request, res: Response) {
     // Convert page to number if provided
     const pageNumber = page ? parseInt(page as string, 10) : 1;
     
+    // Validate year parameter to ensure it's a valid 4-digit year
+    let validatedYear = undefined;
+    if (year && typeof year === 'string') {
+      if (validateYearParameter(year)) {
+        validatedYear = year;
+      } else {
+        logger.warn(`Invalid year parameter rejected: ${year}`);
+        return res.status(400).json({ error: 'Year must be a valid 4-digit year (e.g., 2024)' });
+      }
+    }
+    
     // Call service with validated parameters
     const result = await searchMedia({
       query,
       type: type as string | undefined,
-      year: year as string | undefined,
+      year: validatedYear,
       page: pageNumber,
     });
     

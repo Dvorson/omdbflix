@@ -2,6 +2,7 @@ import axios from 'axios';
 import { getFromCache, setCache } from './cache';
 import { logger } from '../utils/logger';
 import { SearchParams } from '@repo/types';
+import { validateYearParameter } from '../utils/validation';
 
 // Environment variables
 const OMDB_API_URL = process.env.OMDB_API_URL || 'http://www.omdbapi.com';
@@ -37,6 +38,13 @@ export async function searchMedia(params: SearchParams) {
   try {
     const { query, type, year, page = 1 } = params;
     
+    // Add debugging for the SQL conversion error
+    logger.info('searchMedia called with params:', JSON.stringify({ 
+      query, type, year, page,
+      yearType: year ? typeof year : 'undefined',
+      yearValue: year
+    }));
+    
     if (!query) {
       throw new MediaServiceError('Search query is required', 400);
     }
@@ -60,11 +68,28 @@ export async function searchMedia(params: SearchParams) {
 
     // Add optional parameters if provided
     if (type) requestParams.type = type;
-    if (year) requestParams.y = year;
+    // Use the validation utility to ensure year is valid
+    if (year && validateYearParameter(year)) {
+      requestParams.y = year;
+    } else if (year) {
+      logger.warn(`Invalid year parameter ignored in service layer: ${year}`);
+    }
     
     // Make API request
     const response = await axios.get(OMDB_API_URL, { params: requestParams });
     const result = response.data;
+    
+    // Check for the specific SQL conversion error about 'Cuts'
+    if (result.Response === 'False' && result.Error && result.Error.includes('Conversion failed when converting the varchar value')) {
+      logger.error('Received SQL conversion error from OMDB API:', result.Error);
+      
+      // Try again without the year parameter to get some results
+      delete requestParams.y;
+      logger.info('Retrying search without year parameter');
+      
+      const fallbackResponse = await axios.get(OMDB_API_URL, { params: requestParams });
+      return fallbackResponse.data;
+    }
     
     // Cache results if successful
     if (result.Response === 'True') {
