@@ -28,6 +28,9 @@ jobs:
         cd frontend && npm run lint
         # Run backend linting - now errors are fixed
         cd ../backend && npm run lint
+    
+    - name: Build Shared Types Package
+      run: cd packages/types && npm run build
       
     - name: Run Backend Type Check
       run: cd backend && tsc --noEmit
