@@ -59,10 +59,10 @@ export default function DetailClient({ movie, error }: DetailClientProps) {
               <Image
                 src={posterSrc}
                 alt={`${movie.Title} poster`}
-                fill="true"
+                fill={true}
                 sizes="(max-width: 768px) 100vw, 33vw"
                 className="object-cover"
-                priority="true"
+                priority={true}
               />
             </div>
           </div>

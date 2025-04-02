@@ -48,10 +48,13 @@ describe('FavoriteButton', () => {
     mockedApi.removeFavorite.mockResolvedValue({ message: 'Removed', movieId: mockMovie.imdbID });
   });
 
-  it('renders nothing if user is not authenticated and not loading', () => {
+  it('renders a disabled button if user is not authenticated and not loading', () => {
     mockUseAuth.mockReturnValue({ isAuthenticated: false, isLoading: false });
-    const { container } = render(<FavoriteButton movie={mockMovie} />);
-    expect(container.firstChild).toBeNull();
+    render(<FavoriteButton movie={mockMovie} />); // No need for container
+    const button = screen.getByRole('button', { name: /Add .* to favorites/i });
+    expect(button).toBeInTheDocument();
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('title', 'Sign in to add to favorites');
   });
   
   it('renders loading spinner if auth is loading', () => {
