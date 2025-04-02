@@ -33,11 +33,19 @@ router.post('/register', async (req: Request, res: Response) => {
   try {
     const { name, email, password } = req.body;
 
+    // Validate required fields
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: name, email, and password are required'
+      });
+    }
+
     // Check if email already exists
     const db = getDb();
     const existingUser = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
     if (existingUser) {
-      return res.status(400).json({ 
+      return res.status(409).json({ 
         success: false, 
         message: 'Email already in use' 
       });
@@ -64,7 +72,7 @@ router.post('/register', async (req: Request, res: Response) => {
     logger.error('Registration error:', err);
     res.status(err.status || 500).json({ 
       success: false, 
-      message: err.message || 'Server error during registration'
+      message: err.message || 'DB Error'
     });
   }
 });
@@ -96,10 +104,10 @@ router.post('/login', (req: Request, res: Response) => {
 
 // Logout route
 // Note: JWT logout is primarily client-side (remove token)
-router.get('/logout', (req: Request, res: Response) => {
+router.post('/logout', (req: Request, res: Response) => {
   res.status(200).json({ 
     success: true, 
-    message: 'Logged out successfully' 
+    message: 'Logout successful' 
   });
 });
 

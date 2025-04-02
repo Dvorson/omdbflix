@@ -46,6 +46,7 @@
   "devDependencies": {
     "@playwright/test": "^1.40.0",
     "concurrently": "^8.2.2",
+    "eslint": "^8.57.1",
     "husky": "^8.0.3",
     "lint-staged": "^15.1.0",
     "prettier": "^3.5.3",
@@ -64,8 +65,11 @@
     }
   },
   "lint-staged": {
-    "*.{js,jsx,ts,tsx}": [
-      "eslint --fix"
+    "frontend/**/*.{js,jsx,ts,tsx}": [
+      "cd frontend && eslint --fix"
+    ],
+    "backend/**/*.{js,jsx,ts,tsx}": [
+      "cd backend && eslint --fix"
     ],
     "*.{json,md}": [
       "prettier --write"

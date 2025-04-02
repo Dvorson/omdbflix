@@ -103,10 +103,11 @@ export const checkAuthStatus = async (): Promise<{ isAuthenticated: boolean; use
 
 export const logoutUser = async (): Promise<{ message: string }> => {
   try {
-    setToken(null);
     const response = await apiClient.post('/auth/logout'); 
+    setToken(null);
     return response.data;
   } catch (error) {
+    console.error('Logout error:', error);
     setToken(null);
     throw error;
   }
@@ -118,7 +119,7 @@ export const getFavorites = async (): Promise<string[]> => {
     return response.data; 
   } catch (error) {
     console.error('Error getting favorites:', error);
-    throw error;
+    return []; // Return empty array on error
   }
 };
 

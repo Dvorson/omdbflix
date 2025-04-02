@@ -4,7 +4,7 @@ import { Request, Response } from 'express';
 import { OmdbSearchResult } from '@repo/types';
 
 // Mock the mediaService module
-jest.mock('../services/mediaService.js');
+jest.mock('../services/mediaService');
 
 // Define proper types for request and response objects as partials of Express types
 type PartialRequest = Partial<Request> & {
