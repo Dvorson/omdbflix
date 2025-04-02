@@ -32,6 +32,11 @@ export const config: AppConfig = {
 
 // Validate essential configuration
 export function validateConfig(): void {
+  // Skip validation in test mode
+  if (process.env.NODE_ENV === 'test') {
+    return;
+  }
+
   // Removed OAuth variables from required list
   const requiredConfig: (keyof AppConfig)[] = [
     'omdbApiKey',
