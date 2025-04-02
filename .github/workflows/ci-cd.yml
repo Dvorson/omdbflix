@@ -103,9 +103,12 @@ jobs:
     - name: Create backend .env file
       run: |
         echo "OMDB_API_KEY=${{ secrets.OMDB_API_KEY }}" > backend/.env
-        echo "PORT=5000" >> backend/.env
+        echo "BACKEND_PORT=5000" >> backend/.env
         echo "NODE_ENV=test" >> backend/.env
         echo "OMDB_API_URL=http://www.omdbapi.com" >> backend/.env
+        echo "JWT_SECRET=test_jwt_secret_for_ci" >> backend/.env
+        echo "SESSION_SECRET=test_session_secret_for_ci" >> backend/.env
+        echo "FRONTEND_URL=http://localhost:3000" >> backend/.env
         
     # Start services using the root command defined in playwright.config.ts
     # This will handle starting both frontend & backend
@@ -113,8 +116,11 @@ jobs:
     - name: Start Application (via npm run dev)
       run: npm run dev &
       env:
-        OMDB_API_KEY: ${{ secrets.OMDB_API_KEY }} # Pass secret to dev command
-        # Add other necessary env vars for dev command if needed
+        OMDB_API_KEY: ${{ secrets.OMDB_API_KEY }}
+        NODE_ENV: test
+        JWT_SECRET: test_jwt_secret_for_ci
+        SESSION_SECRET: test_session_secret_for_ci
+        FRONTEND_URL: http://localhost:3000
 
     # Add a wait step for the webServer URL to be ready
     - name: Wait for Frontend Server (Port 3000)
