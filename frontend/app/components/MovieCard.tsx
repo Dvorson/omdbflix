@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { MovieDetails } from '@repo/types';
 import FavoriteButton from './FavoriteButton';
+import { useAuth } from '../contexts/AuthContext';
 
 interface MovieCardProps {
   movie: MovieDetails;
@@ -22,6 +23,7 @@ function MovieCard({ movie }: MovieCardProps) {
     Type,
     Poster,
   } = movie;
+  const { isAuthenticated } = useAuth();
 
   return (
     <div 
@@ -33,7 +35,7 @@ function MovieCard({ movie }: MovieCardProps) {
           <Image
             src={Poster !== 'N/A' ? Poster : '/placeholder.png'}
             alt={`${Title} poster`}
-            fill
+            fill={true}
             sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
             className="object-cover"
           />
@@ -49,7 +51,33 @@ function MovieCard({ movie }: MovieCardProps) {
         </div>
       </Link>
       <div className="p-4 pt-0 flex justify-end">
-        <FavoriteButton movie={movie} />
+        {isAuthenticated ? (
+          <FavoriteButton movie={movie} />
+        ) : (
+          <button 
+            disabled 
+            className="inline-flex items-center px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500 opacity-70 cursor-not-allowed"
+            title="Sign in to add to favorites"
+            data-testid="favorite-button"
+            aria-label={`Sign in to add ${Title} to favorites`}
+          >
+            <svg
+              className={`h-5 w-5 text-gray-400 dark:text-gray-500 mr-2`}
+              fill='none'
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+              />
+            </svg>
+            Add to Favorites
+          </button>
+        )}
       </div>
     </div>
   );
