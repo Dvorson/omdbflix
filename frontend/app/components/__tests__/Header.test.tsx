@@ -2,10 +2,17 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import Header from '../Header';
+import { AuthProvider } from '../../contexts/AuthContext';
 
 // Mock Next.js hooks
 jest.mock('next/navigation', () => ({
   usePathname: jest.fn().mockReturnValue('/'),
+  useRouter: jest.fn().mockReturnValue({
+    push: jest.fn(),
+    refresh: jest.fn(),
+    back: jest.fn(),
+    forward: jest.fn()
+  })
 }));
 
 // Mock Link component
@@ -66,6 +73,17 @@ Object.defineProperty(document, 'documentElement', {
   writable: true,
 });
 
+// Mock axios for AuthProvider
+jest.mock('axios', () => ({
+  defaults: {
+    headers: {
+      common: {}
+    }
+  },
+  get: jest.fn().mockResolvedValue({ data: { success: true, user: { id: '1', name: 'Test', email: 'test@example.com', favorites: [] } } }),
+  post: jest.fn().mockResolvedValue({ data: { token: 'fake-token', user: { id: '1', name: 'Test', email: 'test@example.com', favorites: [] } } }),
+}));
+
 describe('Header', () => {
   beforeEach(() => {
     // Reset mocks
@@ -75,8 +93,17 @@ describe('Header', () => {
     localStorageMock.clear();
   });
 
+  // Helper function to render with AuthProvider
+  const renderWithAuth = (ui: React.ReactElement) => {
+    return render(
+      <AuthProvider>
+        {ui}
+      </AuthProvider>
+    );
+  };
+
   it('renders navigation links', () => {
-    render(<Header />);
+    renderWithAuth(<Header />);
     
     // Use getAllByTestId to handle multiple elements with the same testId
     const homeLinks = screen.getAllByTestId('link-to-/');
@@ -88,13 +115,14 @@ describe('Header', () => {
   });
 
   it('toggles dark mode when the button is clicked', () => {
-    render(<Header />);
+    renderWithAuth(<Header />);
     
     // Initially, dark mode should be off (from our mock)
     expect(documentElementMock.classList.add).not.toHaveBeenCalledWith('dark');
     
-    // Find and click the dark mode toggle button
-    const darkModeButton = screen.getByRole('button', { name: /switch to dark mode/i });
+    // Find and click the dark mode toggle button using data-testid, get the first one
+    const darkModeButtons = screen.getAllByTestId('theme-toggle');
+    const darkModeButton = darkModeButtons[0];
     fireEvent.click(darkModeButton);
     
     // Dark mode should be on after click
@@ -113,7 +141,7 @@ describe('Header', () => {
     // Set dark mode preference in localStorage
     localStorageMock.setItem('darkMode', 'true');
     
-    render(<Header />);
+    renderWithAuth(<Header />);
     
     // Dark mode should be enabled
     expect(documentElementMock.classList.add).toHaveBeenCalledWith('dark');

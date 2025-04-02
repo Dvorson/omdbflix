@@ -5,6 +5,7 @@ import {
   removeFromFavorites,
   getFavorites,
   isInFavorites,
+  getUserFavorites
 } from '../api';
 import { MovieDetails } from '@repo/types';
 
@@ -29,6 +30,14 @@ Object.defineProperty(window, 'localStorage', {
   },
   writable: true,
 });
+
+// Helper function to mock a successful fetch response
+const mockFetchSuccess = (data: any) => {
+  (fetch as jest.Mock).mockResolvedValueOnce({
+    ok: true,
+    json: async () => data,
+  });
+};
 
 // Helper function to mock a failed fetch response
 const mockFetchFailure = (status: number, errorData: Record<string, unknown> = {}, errorText?: string) => {
@@ -186,38 +195,80 @@ describe('API Service', () => {
   });
 
   describe('Favorites functionality', () => {
-    it('saves a movie to favorites', () => {
-      saveToFavorites(mockMovie);
+    beforeEach(() => {
+      // Mock auth token to simulate authenticated state
+      mockLocalStorage['token'] = 'fake-token';
+    });
+
+    it('saves a movie to favorites when authenticated', async () => {
+      // Mock API response for adding to favorites
+      mockFetchSuccess({ success: true });
       
+      // First call to getFavorites returns empty array
+      (window.localStorage.getItem as jest.Mock)
+        .mockReturnValueOnce('fake-token') // for token check
+        .mockReturnValueOnce('[]'); // for getFavorites
+      
+      const result = await saveToFavorites(mockMovie);
+      
+      expect(result).toBe(true);
+      expect(fetch).toHaveBeenCalledWith(
+        `/api/favorites`,
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Authorization': 'Bearer fake-token'
+          }),
+          body: JSON.stringify({ movieId: 'tt0111161' })
+        })
+      );
+      
+      // Should update localStorage with the new favorite
       expect(window.localStorage.setItem).toHaveBeenCalledWith(
         'favorites',
         JSON.stringify([mockMovie])
       );
     });
 
-    it('does not add duplicate movies to favorites', () => {
-      // Add movie to favorites first time
-      saveToFavorites(mockMovie);
+    it('does not add duplicate movies to favorites', async () => {
+      // Mock API response for adding to favorites
+      mockFetchSuccess({ success: true });
       
-      // Simulate that localStorage already has this movie
-      (window.localStorage.getItem as jest.Mock).mockReturnValueOnce(
-        JSON.stringify([mockMovie])
-      );
+      // Mock localStorage to simulate the movie already in favorites
+      (window.localStorage.getItem as jest.Mock)
+        .mockReturnValueOnce('fake-token') // for token check
+        .mockReturnValueOnce(JSON.stringify([mockMovie])); // for getFavorites
       
-      // Try to add the same movie again
-      saveToFavorites(mockMovie);
+      const result = await saveToFavorites(mockMovie);
       
-      // Should only have been called once with this movie
-      expect(window.localStorage.setItem).toHaveBeenCalledTimes(1);
+      expect(result).toBe(true);
+      // API call should still be made
+      expect(fetch).toHaveBeenCalled();
+      // But localStorage should not be updated with duplicates
+      expect(window.localStorage.setItem).not.toHaveBeenCalled();
     });
 
-    it('removes a movie from favorites', () => {
-      // Setup mock to return a list with our movie
-      (window.localStorage.getItem as jest.Mock).mockReturnValueOnce(
-        JSON.stringify([mockMovie])
-      );
+    it('removes a movie from favorites when authenticated', async () => {
+      // Mock API response for removing from favorites
+      mockFetchSuccess({ success: true });
       
-      removeFromFavorites(mockMovie.imdbID);
+      // Mock localStorage to simulate the movie in favorites
+      (window.localStorage.getItem as jest.Mock)
+        .mockReturnValueOnce('fake-token') // for token check
+        .mockReturnValueOnce(JSON.stringify([mockMovie])); // for getFavorites
+      
+      const result = await removeFromFavorites(mockMovie.imdbID);
+      
+      expect(result).toBe(true);
+      expect(fetch).toHaveBeenCalledWith(
+        `/api/favorites/${mockMovie.imdbID}`,
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({
+            'Authorization': 'Bearer fake-token'
+          })
+        })
+      );
       
       // Should update localStorage with empty array
       expect(window.localStorage.setItem).toHaveBeenCalledWith(
@@ -226,7 +277,7 @@ describe('API Service', () => {
       );
     });
 
-    it('gets all favorites', () => {
+    it('gets all favorites from localStorage', () => {
       // Setup mock to return a list with our movie
       (window.localStorage.getItem as jest.Mock).mockReturnValueOnce(
         JSON.stringify([mockMovie])
@@ -263,20 +314,47 @@ describe('API Service', () => {
         JSON.stringify([mockMovie])
       );
       
-      const isFavorite = isInFavorites(mockMovie.imdbID);
+      const result = isInFavorites(mockMovie.imdbID);
       
-      expect(isFavorite).toBe(true);
+      expect(result).toBe(true);
     });
 
-    it('returns false when a movie is not in favorites', () => {
+    it('returns false when movie is not in favorites', () => {
       // Setup mock to return a list without our movie
       (window.localStorage.getItem as jest.Mock).mockReturnValueOnce(
         JSON.stringify([])
       );
       
-      const isFavorite = isInFavorites(mockMovie.imdbID);
+      const result = isInFavorites(mockMovie.imdbID);
       
-      expect(isFavorite).toBe(false);
+      expect(result).toBe(false);
+    });
+
+    it('gets favorites from server when authenticated', async () => {
+      // Mock API response for fetching favorites
+      mockFetchSuccess({ success: true, favorites: [mockMovie] });
+      
+      const favorites = await getUserFavorites();
+      
+      expect(favorites).toEqual([mockMovie]);
+      expect(fetch).toHaveBeenCalledWith(
+        `/api/favorites`,
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'Authorization': 'Bearer fake-token'
+          })
+        })
+      );
+    });
+
+    it('returns empty array when getting favorites fails', async () => {
+      // Mock API failure
+      mockFetchFailure(401, { error: 'Unauthorized' });
+      
+      const favorites = await getUserFavorites();
+      
+      expect(favorites).toEqual([]);
+      expect(console.error).toHaveBeenCalled();
     });
   });
 }); 
