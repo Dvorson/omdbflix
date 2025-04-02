@@ -5,8 +5,9 @@ import { useState } from 'react';
 import SearchForm from './components/SearchForm';
 import MovieGrid from './components/MovieGrid';
 import Pagination from './components/Pagination';
-import { searchMedia } from './services/api';
+import { searchMovies } from './services/api';
 import { Movie, SearchParams } from '@repo/types';
+import { useMediaSearch } from './hooks/useMediaSearch';
 
 export default function Home() {
   const [movies, setMovies] = useState<Movie[]>([]);
@@ -22,7 +23,7 @@ export default function Home() {
     setLastSearchParams(params);
 
     try {
-      const result = await searchMedia(params);
+      const result = await searchMovies(params);
       
       if (result.Response === 'True') {
         setMovies(result.Search);
@@ -64,8 +65,12 @@ export default function Home() {
       <SearchForm onSearch={handleSearch} isLoading={loading} />
 
       {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-center text-red-600 dark:text-red-400">
-          <p>{error}</p>
+        <div className="my-4 rounded-md bg-red-50 p-4 text-center dark:bg-red-900/30">
+          <p className="text-red-800 dark:text-red-300">
+            {error.includes('Conversion failed when converting the varchar value') ? 
+              'There was an issue with the year filter. We\'ve automatically removed it from your search.' : 
+              error}
+          </p>
         </div>
       )}
 

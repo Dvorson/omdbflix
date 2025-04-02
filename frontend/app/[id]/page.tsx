@@ -1,6 +1,8 @@
+import React from 'react';
 import { Metadata } from 'next';
-import { getMediaById } from '../services/api';
+import { getMovieDetails } from '../services/api';
 import DetailClient from '../components/DetailClient';
+import { MovieDetails } from '@repo/types';
 
 type Params = {
   id: string;
@@ -35,7 +37,7 @@ export default async function Page({ params }: PageProps) {
   }
 
   try {
-    const movie = await getMediaById(id);
+    const movie = await getMovieDetails(id);
     return <DetailClient movie={movie} />;
   } catch (error) {
     console.error("Error fetching movie:", error);
