@@ -2,7 +2,8 @@ import Redis from 'ioredis';
 import { logger } from '../utils/logger';
 
 // Environment variables with defaults for local development
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6380';
+const REDIS_ENABLED = process.env.REDIS_ENABLED !== 'false';
 const CACHE_TTL = parseInt(process.env.CACHE_TTL || '3600', 10); // Default: 1 hour
 
 // Create Redis client
@@ -12,11 +13,25 @@ let redisClient: Redis | null = null;
  * Initialize Redis client
  */
 export function initializeCache(): void {
+  // Skip Redis initialization if disabled
+  if (!REDIS_ENABLED) {
+    logger.info('Redis cache is disabled');
+    return;
+  }
+  
   try {
     redisClient = new Redis(REDIS_URL, {
       enableOfflineQueue: false,
       connectTimeout: 5000,
-      maxRetriesPerRequest: 3,
+      maxRetriesPerRequest: 1,
+      retryStrategy(times) {
+        // Only retry once, then give up
+        if (times > 1) {
+          logger.warn(`Redis connection failed after ${times} attempts, giving up`);
+          return null;
+        }
+        return 1000; // Retry after 1 second
+      }
     });
 
     redisClient.on('connect', () => {
@@ -25,6 +40,12 @@ export function initializeCache(): void {
 
     redisClient.on('error', (err) => {
       logger.error('Redis client error:', err);
+    });
+    
+    // Add disconnect handler to avoid repeated connection attempts
+    redisClient.on('end', () => {
+      logger.warn('Redis connection closed');
+      redisClient = null;
     });
   } catch (error) {
     logger.error('Failed to initialize Redis client:', error);
@@ -121,7 +142,8 @@ export async function clearCache(): Promise<void> {
 export async function closeCache(): Promise<void> {
   if (redisClient) {
     try {
-      await redisClient.quit();
+      // Use disconnect instead of quit for a more forceful shutdown
+      await redisClient.disconnect();
       logger.info('Redis connection closed');
     } catch (error) {
       logger.error('Error closing Redis connection:', error);

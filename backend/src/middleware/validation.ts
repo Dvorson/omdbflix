@@ -26,18 +26,39 @@ export function validateSearchParams(req: Request, res: Response, next: NextFunc
   }
   
   // Validate year parameter if provided
-  if (year !== undefined && typeof year === 'string') {
-    const yearRegex = /^\d{4}$/;
-    if (!yearRegex.test(year) || parseInt(year, 10) < 1900 || parseInt(year, 10) > new Date().getFullYear() + 5) {
+  if (year !== undefined) {
+    if (typeof year !== 'string') {
       return res.status(400).json({ 
-        error: 'Year must be a valid 4-digit year between 1900 and current year + 5' 
+        error: 'Year must be a string' 
+      });
+    }
+    
+    // Explicitly check if year is exactly a 4-digit number format
+    const yearRegex = /^\d{4}$/;
+    if (!yearRegex.test(year)) {
+      return res.status(400).json({ 
+        error: 'Year must be a valid 4-digit year (e.g., 2024)' 
+      });
+    }
+    
+    // Validate year range
+    const yearNum = parseInt(year, 10);
+    if (yearNum < 1900 || yearNum > new Date().getFullYear() + 5) {
+      return res.status(400).json({ 
+        error: `Year must be between 1900 and ${new Date().getFullYear() + 5}` 
       });
     }
   }
   
   // Validate page parameter if provided
   if (page !== undefined) {
-    const pageNum = parseInt(page as string, 10);
+    if (typeof page !== 'string') {
+      return res.status(400).json({ 
+        error: 'Page must be a string' 
+      });
+    }
+    
+    const pageNum = parseInt(page, 10);
     if (isNaN(pageNum) || pageNum < 1) {
       return res.status(400).json({ error: 'Page must be a positive integer' });
     }
