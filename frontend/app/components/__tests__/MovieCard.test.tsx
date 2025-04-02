@@ -2,7 +2,8 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import MovieCard from '../MovieCard';
-import { Movie } from '../../types';
+import { Movie } from '@repo/types';
+import { AuthProvider } from '../../contexts/AuthContext';
 
 // Mock Next.js components
 jest.mock('next/image', () => ({
@@ -22,6 +23,17 @@ jest.mock('next/link', () => ({
   ),
 }));
 
+// Mock axios for AuthProvider
+jest.mock('axios', () => ({
+  defaults: {
+    headers: {
+      common: {}
+    }
+  },
+  get: jest.fn().mockResolvedValue({ data: { success: true, user: { id: '1', name: 'Test', email: 'test@example.com', favorites: [] } } }),
+  post: jest.fn().mockResolvedValue({ data: { token: 'fake-token', user: { id: '1', name: 'Test', email: 'test@example.com', favorites: [] } } }),
+}));
+
 describe('MovieCard', () => {
   const mockMovie: Movie = {
     imdbID: 'tt0111161',
@@ -39,12 +51,21 @@ describe('MovieCard', () => {
     Poster: 'N/A',
   };
 
+  // Helper function to render with AuthProvider
+  const renderWithAuth = (ui: React.ReactElement) => {
+    return render(
+      <AuthProvider>
+        {ui}
+      </AuthProvider>
+    );
+  };
+
   it('renders correctly with a movie prop', () => {
-    render(<MovieCard movie={mockMovie} />);
+    renderWithAuth(<MovieCard movie={mockMovie} />);
     
     expect(screen.getByText('The Shawshank Redemption')).toBeInTheDocument();
     expect(screen.getByText('1994')).toBeInTheDocument();
-    expect(screen.getByText('movie')).toBeInTheDocument();
+    expect(screen.getByText(/movie/i)).toBeInTheDocument();
     
     // Check link
     const link = screen.getByRole('link');
@@ -56,7 +77,7 @@ describe('MovieCard', () => {
   });
 
   it('uses a placeholder image when poster is N/A', () => {
-    render(<MovieCard movie={mockMovieNoPoster} />);
+    renderWithAuth(<MovieCard movie={mockMovieNoPoster} />);
     
     expect(screen.getByText('The Godfather')).toBeInTheDocument();
     
