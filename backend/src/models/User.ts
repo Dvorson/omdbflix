@@ -3,159 +3,103 @@ import jwt from 'jsonwebtoken';
 import { getDb } from '../utils/db';
 import { logger } from '../utils/logger';
 
-export interface User {
-  id: number;
+// Interface for User data (adjust fields as needed)
+export interface UserData {
+  id?: number;
   email: string;
-  password: string;
+  password?: string; // Optional because it's hashed and might not always be present
   name: string;
-  created_at?: string;
-  updated_at?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-export interface UserWithoutPassword {
-  id: number;
-  email: string;
-  name: string;
-  created_at?: string;
-  updated_at?: string;
-}
+export class User {
+  static async create(userData: UserData): Promise<UserData | null> {
+    const db = getDb();
+    let hashedPassword = null;
 
-export interface CreateUserData {
-  email: string;
-  password: string;
-  name: string;
-}
-
-export const UserModel = {
-  /**
-   * Find a user by ID
-   */
-  findById: (id: number): User | undefined => {
-    try {
-      const db = getDb();
-      const stmt = db.prepare('SELECT * FROM users WHERE id = ?');
-      return stmt.get(id);
-    } catch (error) {
-      logger.error('Error finding user by ID:', error);
-      return undefined;
+    // Hash password if provided (for local registration)
+    if (userData.password) {
+      try {
+        const salt = await bcrypt.genSalt(10);
+        hashedPassword = await bcrypt.hash(userData.password, salt);
+      } catch (error) {
+        logger.error('Error hashing password:', error);
+        return null;
+      }
+    } else {
+      // Password is now required for local-only auth
+      logger.error('Attempted to create user without password.');
+      throw new Error('Password is required for registration.');
     }
-  },
 
-  /**
-   * Find a user by email
-   */
-  findByEmail: (email: string): User | undefined => {
+    const sql = `INSERT INTO users (email, password, name) VALUES (?, ?, ?)`;
+    
     try {
-      const db = getDb();
-      const stmt = db.prepare('SELECT * FROM users WHERE email = ?');
-      return stmt.get(email.toLowerCase());
-    } catch (error) {
-      logger.error('Error finding user by email:', error);
-      return undefined;
-    }
-  },
-
-  /**
-   * Create a new user
-   */
-  create: async (userData: CreateUserData): Promise<User | undefined> => {
-    try {
-      const db = getDb();
-      
-      // Hash the password
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(userData.password, salt);
-      
-      const stmt = db.prepare(
-        'INSERT INTO users (email, password, name) VALUES (?, ?, ?)'
-      );
-      
-      const result = stmt.run(
-        userData.email.toLowerCase(),
+      const result = db.prepare(sql).run(
+        userData.email,
         hashedPassword,
         userData.name
       );
-      
-      if (result.lastInsertRowid) {
-        const userStmt = db.prepare('SELECT * FROM users WHERE id = ?');
-        return userStmt.get(result.lastInsertRowid);
-      }
-      
-      return undefined;
+      return this.findById(result.lastInsertRowid as number);
     } catch (error) {
       logger.error('Error creating user:', error);
-      return undefined;
+      // Handle specific errors like UNIQUE constraint violation (email exists)
+      if ((error as any).code === 'SQLITE_CONSTRAINT_UNIQUE') {
+         throw new Error('Email already exists');
+      }
+      return null;
     }
-  },
+  }
 
-  /**
-   * Compare a password with the hashed password in the database
-   */
-  comparePassword: async (plainPassword: string, hashedPassword: string): Promise<boolean> => {
+  static async findById(id: number): Promise<UserData | null> {
+    const db = getDb();
+    const sql = 'SELECT id, email, name, created_at AS createdAt, updated_at AS updatedAt FROM users WHERE id = ?';
+    try {
+      const row = db.prepare(sql).get(id) as UserData | undefined;
+      return row || null;
+    } catch (error) {
+      logger.error('Error finding user by ID:', error);
+      return null;
+    }
+  }
+
+  static async findByEmail(email: string): Promise<UserData | null> {
+    const db = getDb();
+    // Use correct column names with AS for aliasing
+    const sql = 'SELECT id, email, password, name, created_at AS createdAt, updated_at AS updatedAt FROM users WHERE email = ?';
+    try {
+      const row = db.prepare(sql).get(email) as UserData | undefined;
+      return row || null;
+    } catch (error) {
+      logger.error('Error finding user by email:', error);
+      return null;
+    }
+  }
+
+  // Method to compare password for local login
+  static async comparePassword(plainPassword: string, hashedPassword: string): Promise<boolean> {
     try {
       return await bcrypt.compare(plainPassword, hashedPassword);
     } catch (error) {
-      logger.error('Error comparing passwords:', error);
+      logger.error('Error comparing password:', error);
       return false;
     }
-  },
+  }
 
-  /**
-   * Generate a JWT token for a user
-   */
-  generateAuthToken: (userId: number): string => {
+  // Method to generate JWT token
+  static generateToken(userId: number): string {
     const jwtSecret = process.env.JWT_SECRET || 'fallback_secret_dev_only';
     const expiresIn = process.env.JWT_EXPIRES_IN || '7d';
     
+    if (jwtSecret === 'fallback_secret_dev_only') {
+      logger.warn('Using fallback JWT secret. Set JWT_SECRET environment variable for production.');
+    }
+
     return jwt.sign(
       { id: userId },
       jwtSecret,
       { expiresIn }
     );
-  },
-
-  /**
-   * Get user's favorites
-   */
-  getFavorites: (userId: number): string[] => {
-    try {
-      const db = getDb();
-      const stmt = db.prepare('SELECT movie_id FROM favorites WHERE user_id = ?');
-      const favorites = stmt.all(userId);
-      return favorites.map((f: { movie_id: string }) => f.movie_id);
-    } catch (error) {
-      logger.error('Error getting user favorites:', error);
-      return [];
-    }
-  },
-
-  /**
-   * Add a movie to favorites
-   */
-  addFavorite: (userId: number, movieId: string): boolean => {
-    try {
-      const db = getDb();
-      const stmt = db.prepare('INSERT OR IGNORE INTO favorites (user_id, movie_id) VALUES (?, ?)');
-      const result = stmt.run(userId, movieId);
-      return result.changes > 0;
-    } catch (error) {
-      logger.error('Error adding movie to favorites:', error);
-      return false;
-    }
-  },
-
-  /**
-   * Remove a movie from favorites
-   */
-  removeFavorite: (userId: number, movieId: string): boolean => {
-    try {
-      const db = getDb();
-      const stmt = db.prepare('DELETE FROM favorites WHERE user_id = ? AND movie_id = ?');
-      const result = stmt.run(userId, movieId);
-      return result.changes > 0;
-    } catch (error) {
-      logger.error('Error removing movie from favorites:', error);
-      return false;
-    }
   }
-}; 
+} 
