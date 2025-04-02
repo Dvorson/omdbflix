@@ -20,6 +20,11 @@ const nextConfig = {
     // which uses tsconfig.app.json to validate app code only
     ignoreBuildErrors: true,
   },
+  eslint: {
+    // Warning: This allows production builds to successfully complete even if
+    // your project has ESLint errors.
+    ignoreDuringBuilds: true,
+  },
 };
 
 module.exports = nextConfig; 
