@@ -74,7 +74,7 @@ export const getMovieDetails = async (id: string): Promise<MovieDetails> => {
 
 // --- Authentication API Functions ---
 
-export const loginUser = async (credentials: { email: string; password: string }): Promise<{ token: string; user: any }> => {
+export const loginUser = async (credentials: { email: string; password: string }): Promise<{ token: string; user: unknown }> => {
   try {
     const response = await apiClient.post('/auth/login', credentials);
     // Store token upon successful login (AuthContext should handle this properly)
@@ -88,7 +88,7 @@ export const loginUser = async (credentials: { email: string; password: string }
   }
 };
 
-export const registerUser = async (userData: { email: string; password: string; name: string }): Promise<{ token: string; user: any }> => {
+export const registerUser = async (userData: { email: string; password: string; name: string }): Promise<{ token: string; user: unknown }> => {
   try {
     const response = await apiClient.post('/auth/register', userData);
     // Store token upon successful registration
@@ -102,7 +102,7 @@ export const registerUser = async (userData: { email: string; password: string; 
   }
 };
 
-export const checkAuthStatus = async (): Promise<{ isAuthenticated: boolean; user: any | null }> => {
+export const checkAuthStatus = async (): Promise<{ isAuthenticated: boolean; user: unknown | null }> => {
   try {
     // If no token exists locally, don't bother hitting the endpoint
     if (!getToken()) {
@@ -110,9 +110,9 @@ export const checkAuthStatus = async (): Promise<{ isAuthenticated: boolean; use
     }
     const response = await apiClient.get('/auth/status');
     return response.data;
-  } catch (error: any) {
+  } catch (error: unknown) {
     // If API returns 401 Unauthorized, it means the token is invalid or expired
-    if (error.response && error.response.status === 401) {
+    if (error && typeof error === 'object' && 'response' in error && error.response && typeof error.response === 'object' && 'status' in error.response && error.response.status === 401) {
       setToken(null); // Clear invalid token
       return { isAuthenticated: false, user: null };
     }

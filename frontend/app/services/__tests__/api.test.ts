@@ -79,6 +79,14 @@ const mockMovie: MovieDetails = {
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 const mockedAxiosInstance = mockedAxios.create() as jest.Mocked<typeof axios>;
 
+// At the top of the file, near the other imports
+interface AxiosError {
+  response?: {
+    status: number;
+    data?: unknown;
+  };
+}
+
 describe('API Service', () => {
   // Helper to reset mocks and storage before each test
   beforeEach(() => {
@@ -142,8 +150,8 @@ describe('API Service', () => {
 
     it('loginUser: throws error and clears token on failure', async () => {
       const credentials = { email: 'fail@example.com', password: 'wrong' };
-      const error = new Error('Unauthorized');
-      (error as any).response = { status: 401 }; // Mock Axios error structure
+      const error = new Error('Unauthorized') as Error & AxiosError;
+      error.response = { status: 401 }; // Mock Axios error structure
       mockedAxiosInstance.post.mockRejectedValueOnce(error);
       api.setToken('old-token'); // Simulate existing token
 
@@ -165,8 +173,8 @@ describe('API Service', () => {
 
     it('registerUser: throws error on failure', async () => {
       const userData = { name: 'Taken Email', email: 'test@example.com', password: 'password123' };
-      const error = new Error('Conflict');
-      (error as any).response = { status: 409 };
+      const error = new Error('Conflict') as Error & AxiosError;
+      error.response = { status: 409 };
       mockedAxiosInstance.post.mockRejectedValueOnce(error);
 
       // Clear localStorage and local token state to ensure we're starting clean
@@ -198,8 +206,8 @@ describe('API Service', () => {
 
     it('checkAuthStatus: returns unauthenticated and clears token on 401 error', async () => {
       api.setToken('invalid-token');
-      const error = new Error('Unauthorized');
-      (error as any).response = { status: 401 };
+      const error = new Error('Unauthorized') as Error & AxiosError;
+      error.response = { status: 401 };
       mockedAxiosInstance.get.mockRejectedValueOnce(error);
 
       const result = await api.checkAuthStatus();
@@ -263,8 +271,8 @@ describe('API Service', () => {
     });
     
     it('getFavorites: returns empty array on API error', async () => {
-      const error = new Error('Forbidden');
-      (error as any).response = { status: 403 };
+      const error = new Error('Forbidden') as Error & AxiosError;
+      error.response = { status: 403 };
       mockedAxiosInstance.get.mockRejectedValueOnce(error);
       
       const result = await api.getFavorites();
@@ -284,8 +292,8 @@ describe('API Service', () => {
     
     it('addFavorite: throws error on failure', async () => {
       const movieId = 'tt0111161';
-      const error = new Error('Conflict');
-      (error as any).response = { status: 409 };
+      const error = new Error('Conflict') as Error & AxiosError;
+      error.response = { status: 409 };
       mockedAxiosInstance.post.mockRejectedValueOnce(error);
       
       await expect(api.addFavorite(movieId)).rejects.toThrow('Conflict');
@@ -304,8 +312,8 @@ describe('API Service', () => {
     
     it('removeFavorite: throws error on failure', async () => {
       const movieId = 'tt0111161';
-      const error = new Error('Not Found');
-      (error as any).response = { status: 404 };
+      const error = new Error('Not Found') as Error & AxiosError;
+      error.response = { status: 404 };
       mockedAxiosInstance.delete.mockRejectedValueOnce(error);
       
       await expect(api.removeFavorite(movieId)).rejects.toThrow('Not Found');
