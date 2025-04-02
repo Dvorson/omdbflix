@@ -1,7 +1,8 @@
-import { Router } from 'express';
-import { searchMediaController, getMediaByIdController } from '../controllers/mediaController';
-import { validateSearchParams, validateIdParam } from '../middleware/validation';
-import { logger } from '../utils/logger';
+import { Router, Request, Response } from 'express';
+import { searchMediaController, getMediaByIdController } from '../controllers/mediaController.js';
+import { validateSearchParams, validateIdParam } from '../middleware/validation.js';
+import { logger } from '../utils/logger.js';
+import { ApiError } from '@repo/types';
 
 const router = Router();
 
@@ -17,7 +18,7 @@ router.get('/search', validateSearchParams, searchMediaController);
  * @desc    Test endpoint for year parameter validation
  * @access  Public
  */
-router.get('/test-year', (req, res) => {
+router.get('/test-year', (req: Request, res: Response) => {
   try {
     const { year } = req.query;
     
@@ -44,12 +45,13 @@ router.get('/test-year', (req, res) => {
           year,
           numericYear
         });
-      } catch (error: any) {
+      } catch (error) {
+        const typedError = error as ApiError;
         return res.status(400).json({ 
           status: 'error', 
           message: 'Year parameter would cause SQL conversion error',
           year,
-          error: error.message
+          error: typedError.message
         });
       }
     }
@@ -59,11 +61,12 @@ router.get('/test-year', (req, res) => {
       message: 'No year parameter provided or invalid type',
       year
     });
-  } catch (error: any) {
+  } catch (error) {
+    const typedError = error as ApiError;
     return res.status(500).json({ 
       status: 'error', 
       message: 'Server error testing year parameter',
-      error: error.message
+      error: typedError.message
     });
   }
 });

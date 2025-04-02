@@ -1,17 +1,24 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import passport from 'passport';
-import { getDb } from '../utils/db';
-import { logger } from '../utils/logger';
-import { getMediaById } from '../services/mediaService'; // To potentially fetch details if needed
+import { getDb } from '../utils/db.js';
+import { logger } from '../utils/logger.js';
 
 const router = Router();
+
+// Get the User type from Express augmentation
+interface AuthUser {
+  id: number;
+}
 
 // Middleware to protect all favorite routes
 const requireAuth = passport.authenticate('jwt', { session: false });
 
 // GET /api/favorites - Get all favorites for the logged-in user
 router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
-  const userId = (req.user as any)?.id; // Get user ID from authenticated request
+  // Safe type assertion for authenticated user
+  const user = req.user as unknown;
+  const userId = (user as AuthUser)?.id;
+  
   if (!userId) {
     // This shouldn't happen if requireAuth middleware works, but good practice
     return res.status(401).json({ message: 'Authentication required' });
@@ -26,7 +33,7 @@ router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunct
     // const detailedFavorites = await Promise.all(favorites.map(async (fav: { movie_id: string }) => getMediaById(fav.movie_id)));
     // res.json(detailedFavorites);
     
-    res.json(favorites.map((fav: { movie_id: string }) => fav.movie_id)); // Return just the IDs
+    res.json(favorites.map((fav) => fav.movie_id)); // Return just the IDs
   } catch (error) {
     logger.error(`Error fetching favorites for user ${userId}:`, error);
     next(error);
@@ -35,7 +42,10 @@ router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunct
 
 // POST /api/favorites - Add a movie to favorites
 router.post('/', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
-  const userId = (req.user as any)?.id;
+  // Safe type assertion for authenticated user
+  const user = req.user as unknown;
+  const userId = (user as AuthUser)?.id;
+  
   const { movieId } = req.body; // Expecting { "movieId": "tt1234567" }
 
   if (!userId) {
@@ -51,9 +61,10 @@ router.post('/', requireAuth, async (req: Request, res: Response, next: NextFunc
     db.prepare(sql).run(userId, movieId);
     logger.info(`Added favorite ${movieId} for user ${userId}`);
     res.status(201).json({ message: 'Favorite added successfully', movieId });
-  } catch (error: any) {
+  } catch (error) {
     // Handle potential UNIQUE constraint violation (already favorited)
-    if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+    const sqliteError = error as { code?: string };
+    if (sqliteError.code === 'SQLITE_CONSTRAINT_UNIQUE') {
       logger.warn(`Attempted to add duplicate favorite ${movieId} for user ${userId}`);
       return res.status(409).json({ message: 'Movie already in favorites' });
     }
@@ -64,7 +75,10 @@ router.post('/', requireAuth, async (req: Request, res: Response, next: NextFunc
 
 // DELETE /api/favorites/:movieId - Remove a movie from favorites
 router.delete('/:movieId', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
-  const userId = (req.user as any)?.id;
+  // Safe type assertion for authenticated user
+  const user = req.user as unknown;
+  const userId = (user as AuthUser)?.id;
+  
   const { movieId } = req.params; // Get movieId from URL parameters
 
   if (!userId) {

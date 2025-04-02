@@ -1,13 +1,15 @@
 import path from 'path';
 import Database from 'better-sqlite3';
-import { logger } from './logger';
+import type { Database as DatabaseType } from 'better-sqlite3';
+import { logger } from './logger.js';
+import fs from 'fs';
 
 const dbPath = path.resolve(__dirname, '../../data/movie_explorer.db');
-let db: any; // Using any temporarily
+let db: DatabaseType | null = null;
 
 export function initDatabase() {
   try {
-    if (!require('fs').existsSync(path.dirname(dbPath))) {
+    if (!fs.existsSync(path.dirname(dbPath))) {
       logger.warn(`Database directory ${path.dirname(dbPath)} does not exist. Run setup script first.`);
       return; 
     }
@@ -21,7 +23,7 @@ export function initDatabase() {
   }
 }
 
-export function getDb() {
+export function getDb(): DatabaseType {
   if (!db) {
     throw new Error('Database not initialized.');
   }

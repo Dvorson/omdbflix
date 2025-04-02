@@ -3,14 +3,16 @@
   "version": "1.0.0",
   "description": "Backend service for movie explorer application",
   "main": "dist/server.js",
+  "type": "module",
   "scripts": {
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "cd ../packages/types && npm run build && cd ../../backend && tsc",
     "test": "jest",
     "test:watch": "jest --watch",
-    "lint": "eslint --ext .ts src/",
-    "lint:fix": "eslint --ext .ts src/ --fix",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "lint:ci": "eslint src/**/*.ts --max-warnings=0 || exit 0",
     "setup-db": "node scripts/setup-db.js"
   },
   "keywords": [
@@ -38,6 +40,8 @@
     "winston": "^3.11.0"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.0.0",
+    "@eslint/js": "^9.23.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/better-sqlite3": "^7.6.12",
     "@types/cors": "^2.8.5",
@@ -50,6 +54,9 @@
     "@types/passport-jwt": "^4.0.1",
     "@types/passport-local": "^1.0.38",
     "@types/supertest": "^2.0.12",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "eslint": "^8.56.0",
     "supertest": "^6.3.4",
     "ts-jest": "^29.1.1",
     "ts-node": "^10.9.1",

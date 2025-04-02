@@ -1,7 +1,11 @@
 import { Request, Response } from 'express';
-import { User } from '../models/User';
-import { logger } from '../utils/logger';
-import { getDb } from '../utils/db';
+import { logger } from '../utils/logger.js';
+import { getDb } from '../utils/db.js';
+
+// Define proper error type
+interface SQLiteError extends Error {
+  code?: string;
+}
 
 // Get user favorites
 export const getFavorites = async (req: Request, res: Response): Promise<void> => {
@@ -133,9 +137,10 @@ async function addFavoriteToDb(userId: number, movieId: string): Promise<boolean
         const sql = 'INSERT INTO favorites (user_id, movie_id) VALUES (?, ?)';
         db.prepare(sql).run(userId, movieId);
         return true;
-    } catch (error: any) {
+    } catch (error) {
         // Handle potential UNIQUE constraint violation (already favorited)
-        if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+        const sqliteError = error as SQLiteError;
+        if (sqliteError.code === 'SQLITE_CONSTRAINT_UNIQUE') {
             logger.warn(`Attempted to add duplicate favorite ${movieId} for user ${userId}`);
             // Depending on desired behavior, could return true (idempotent) or false/throw
             return true; // Treat as success if already exists

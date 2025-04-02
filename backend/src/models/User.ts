@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { getDb } from '../utils/db';
-import { logger } from '../utils/logger';
+import { getDb } from '../utils/db.js';
+import { logger } from '../utils/logger.js';
 
 // Interface for User data (adjust fields as needed)
 export interface UserData {
@@ -11,6 +11,11 @@ export interface UserData {
   name: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+// SQLite error interface
+interface SQLiteError extends Error {
+  code?: string;
 }
 
 export class User {
@@ -45,7 +50,8 @@ export class User {
     } catch (error) {
       logger.error('Error creating user:', error);
       // Handle specific errors like UNIQUE constraint violation (email exists)
-      if ((error as any).code === 'SQLITE_CONSTRAINT_UNIQUE') {
+      const sqliteError = error as SQLiteError;
+      if (sqliteError.code === 'SQLITE_CONSTRAINT_UNIQUE') {
          throw new Error('Email already exists');
       }
       return null;

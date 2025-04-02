@@ -5,16 +5,16 @@ declare module 'better-sqlite3' {
     constructor(filename: string, options?: DatabaseOptions);
     prepare(sql: string): Statement;
     exec(sql: string): void;
-    pragma(pragma: string, options?: any): any;
+    pragma(pragma: string, options?: Record<string, unknown>): unknown;
     close(): void;
-    [key: string]: any;
+    [key: string]: unknown;
   }
 
   interface Statement {
-    run(...params: any[]): { lastInsertRowid?: number; changes: number };
-    get(...params: any[]): any;
-    all(...params: any[]): any[];
-    [key: string]: any;
+    run(...params: unknown[]): { lastInsertRowid?: number; changes: number };
+    get(...params: unknown[]): Record<string, unknown>;
+    all(...params: unknown[]): Record<string, unknown>[];
+    [key: string]: unknown;
   }
 
   interface DatabaseOptions {
@@ -22,7 +22,7 @@ declare module 'better-sqlite3' {
     fileMustExist?: boolean;
     timeout?: number;
     verbose?: (message: string) => void;
-    [key: string]: any;
+    [key: string]: unknown;
   }
 
   export default Database;
@@ -37,13 +37,13 @@ declare module 'bcryptjs' {
 
 declare module 'jsonwebtoken' {
   export interface JwtPayload {
-    [key: string]: any;
+    [key: string]: unknown;
   }
   
   export function sign(
     payload: string | Buffer | object,
     secretOrPrivateKey: string,
-    options?: { expiresIn?: string | number; [key: string]: any }
+    options?: { expiresIn?: string | number; [key: string]: unknown }
   ): string;
   
   export function verify(

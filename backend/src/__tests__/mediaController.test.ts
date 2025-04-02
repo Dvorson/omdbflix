@@ -1,14 +1,27 @@
-import { searchMediaController } from '../controllers/mediaController';
-import * as mediaService from '../services/mediaService';
-import { logger } from '../utils/logger';
+import { searchMediaController } from '../controllers/mediaController.js';
+import * as mediaService from '../services/mediaService.js';
+import { Request, Response } from 'express';
+import { OmdbSearchResult } from '@repo/types';
 
 // Mock the mediaService module
-jest.mock('../services/mediaService');
-jest.mock('../utils/logger');
+jest.mock('../services/mediaService.js');
+
+// Define proper types for request and response objects as partials of Express types
+type PartialRequest = Partial<Request> & {
+  query: {
+    query: string;
+    year?: string;
+  };
+};
+
+type PartialResponse = Partial<Response> & {
+  status: jest.Mock;
+  json: jest.Mock;
+};
 
 describe('Media Controller', () => {
-  let req: any;
-  let res: any;
+  let req: PartialRequest;
+  let res: PartialResponse;
   
   beforeEach(() => {
     // Create mock request and response objects
@@ -31,8 +44,11 @@ describe('Media Controller', () => {
     // Set up the request with an invalid year
     req.query.year = 'Cuts';
     
-    // Call the controller
-    await searchMediaController(req, res);
+    // Call the controller with type casting
+    await searchMediaController(
+      req as unknown as Request, 
+      res as unknown as Response
+    );
     
     // Verify response
     expect(res.status).toHaveBeenCalledWith(400);
@@ -49,12 +65,18 @@ describe('Media Controller', () => {
   it('should reject other invalid year formats', async () => {
     // Test with year that's too short
     req.query.year = '123';
-    await searchMediaController(req, res);
+    await searchMediaController(
+      req as unknown as Request, 
+      res as unknown as Response
+    );
     expect(res.status).toHaveBeenCalledWith(400);
     
     // Test with non-numeric year
     req.query.year = 'abcd';
-    await searchMediaController(req, res);
+    await searchMediaController(
+      req as unknown as Request, 
+      res as unknown as Response
+    );
     expect(res.status).toHaveBeenCalledWith(400);
   });
   
@@ -63,7 +85,7 @@ describe('Media Controller', () => {
     req.query.year = '2020';
     
     // Mock the service to return a result
-    const mockResult = { 
+    const mockResult: OmdbSearchResult = { 
       Search: [], 
       totalResults: '0', 
       Response: 'True' 
@@ -71,7 +93,10 @@ describe('Media Controller', () => {
     (mediaService.searchMedia as jest.Mock).mockResolvedValue(mockResult);
     
     // Call the controller
-    await searchMediaController(req, res);
+    await searchMediaController(
+      req as unknown as Request, 
+      res as unknown as Response
+    );
     
     // Verify searchMedia was called with the correct parameters
     expect(mediaService.searchMedia).toHaveBeenCalledWith(

@@ -1,44 +1,12 @@
 import axios from 'axios';
-import { config } from '../utils/config';
-import { MovieDetails } from '@repo/types';
-
-// Types for OMDB API responses
-export interface OmdbSearchResult {
-  Search: OmdbMovie[];
-  totalResults: string;
-  Response: string;
-  Error?: string;
-}
-
-export interface OmdbMovie {
-  Title: string;
-  Year: string;
-  imdbID: string;
-  Type: string;
-  Poster: string;
-}
-
-export interface OmdbMovieDetail extends OmdbMovie {
-  Rated: string;
-  Released: string;
-  Runtime: string;
-  Genre: string;
-  Director: string;
-  Writer: string;
-  Actors: string;
-  Plot: string;
-  Language: string;
-  Country: string;
-  Awards: string;
-  Ratings: { Source: string; Value: string }[];
-  Metascore: string;
-  imdbRating: string;
-  imdbVotes: string;
-  DVD?: string;
-  BoxOffice?: string;
-  Production?: string;
-  Website?: string;
-}
+import { config } from '../utils/config.js';
+import { 
+  MovieDetails,
+  OmdbSearchResult,
+  OmdbMovie,
+  OmdbMovieDetail,
+  OmdbRawSearchItem
+} from '@repo/types';
 
 // Define MOCK_MOVIE_DETAILS inline again
 const MOCK_MOVIE_DETAILS: Record<string, OmdbMovieDetail> = {
@@ -134,7 +102,7 @@ export const searchMedia = async (
 
     // Ensure the Search array conforms to OmdbMovie[]
     // The API might return slightly different shapes sometimes
-    const searchResults: OmdbMovie[] = (response.data.Search || []).map((item: any) => ({
+    const searchResults: OmdbMovie[] = (response.data.Search || []).map((item: OmdbRawSearchItem) => ({
       Title: item.Title || 'N/A',
       Year: item.Year || 'N/A',
       imdbID: item.imdbID,

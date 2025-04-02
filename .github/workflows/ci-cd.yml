@@ -23,7 +23,11 @@ jobs:
       run: npm ci # Install all workspace dependencies from root
       
     - name: Run Linters
-      run: npm run lint
+      run: |
+        # Run frontend linting
+        cd frontend && npm run lint
+        # Run backend linting - now errors are fixed
+        cd ../backend && npm run lint
       
     - name: Run Backend Type Check
       run: cd backend && tsc --noEmit

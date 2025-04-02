@@ -1,9 +1,9 @@
 import passport from 'passport';
-import { Strategy as LocalStrategy, VerifyFunction as LocalVerifyFunction, IVerifyOptions } from 'passport-local';
-import { Strategy as JwtStrategy, ExtractJwt, VerifyCallback as JwtVerifyCallback, StrategyOptions as JwtStrategyOptions } from 'passport-jwt';
-import { User, UserData } from '../models/User';
-import { config } from '../utils/config';
-import { logger } from '../utils/logger';
+import { Strategy as LocalStrategy, VerifyFunction as LocalVerifyFunction } from 'passport-local';
+import { Strategy as JwtStrategy, ExtractJwt, StrategyOptions as JwtStrategyOptions } from 'passport-jwt';
+import { User } from '../models/User.js';
+import { config } from '../utils/config.js';
+import { logger } from '../utils/logger.js';
 
 // Type for JWT payload
 interface JwtPayload {
@@ -19,7 +19,6 @@ export default function configurePassport() {
       try {
         const user = await User.findByEmail(email);
         if (!user) {
-          // Use IVerifyOptions for the message
           return done(null, false, { message: 'Incorrect email.' });
         }
         if (!user.password) {
@@ -31,8 +30,9 @@ export default function configurePassport() {
           return done(null, false, { message: 'Incorrect password.' });
         }
         // Password hash should not be included in the user object passed to `done` typically
-        const { password: _, ...userForSession } = user;
-        return done(null, userForSession as Express.User); // Cast to Express.User
+        const userWithoutPassword = { ...user };
+        delete userWithoutPassword.password;
+        return done(null, userWithoutPassword as Express.User); // Cast to Express.User
       } catch (error) {
         logger.error('Error in LocalStrategy:', error);
         return done(error);
@@ -56,7 +56,8 @@ export default function configurePassport() {
       }
       const user = await User.findById(payload.id);
       if (user) {
-        const { password, ...userWithoutPassword } = user;
+        const userWithoutPassword = { ...user };
+        delete userWithoutPassword.password;
         // User object is valid for the callback
         return done(null, userWithoutPassword); 
       } else {
@@ -73,8 +74,9 @@ export default function configurePassport() {
   passport.serializeUser((user: Express.User, done) => { 
     // Assume Express.User has an `id` property (common practice)
     // You might need to extend the Express.User interface globally if `id` isn't standard
-    if (user && typeof (user as any).id === 'number') {
-        done(null, (user as any).id);
+    const userWithId = user as Express.User & { id: number };
+    if (userWithId && typeof userWithId.id === 'number') {
+        done(null, userWithId.id);
     } else {
         done(new Error('User object missing ID during serialization'));
     }
@@ -84,7 +86,8 @@ export default function configurePassport() {
     try {
       const user = await User.findById(id);
       if (user) {
-        const { password, ...userWithoutPassword } = user;
+        const userWithoutPassword = { ...user };
+        delete userWithoutPassword.password;
         // Pass the found user object (without password)
         done(null, userWithoutPassword as Express.User); // Cast to Express.User
       } else {

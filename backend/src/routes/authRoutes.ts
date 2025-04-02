@@ -1,81 +1,106 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Request, Response } from 'express';
 import passport from 'passport';
-import { User } from '../models/User';
-import { logger } from '../utils/logger';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
+import { config } from '../utils/config.js';
+import { getDb } from '../utils/db.js';
+import { logger } from '../utils/logger.js';
+import { AuthUser, ApiError, AuthInfo } from '@repo/types';
 
 const router = Router();
 
-// --- Helper to generate JWT --- 
-// (Could also be in a separate utility file)
-function generateAndSendToken(user: Express.User, res: Response) {
-    const token = User.generateToken((user as any).id); // Assuming user object has id
-    res.json({ 
-        message: "Authentication successful", 
-        token: token, 
-        user: {
-            id: (user as any).id,
-            name: (user as any).name,
-            email: (user as any).email
-            // Add other non-sensitive fields as needed
-        }
-    });
-}
+// Generate JWT token and send it in the response
+const generateAndSendToken = (user: AuthUser, res: Response) => {
+  const token = jwt.sign(
+    { id: user.id, email: user.email, name: user.name },
+    config.jwtSecret,
+    { expiresIn: '1h' }
+  );
 
-// === Local Authentication Routes ===
+  res.status(200).json({
+    success: true,
+    token: `Bearer ${token}`,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email
+    }
+  });
+};
 
-// 5. Register New User (Local)
-router.post('/register', async (req: Request, res: Response, next: NextFunction) => {
-  const { email, password, name } = req.body;
-
-  if (!email || !password || !name) {
-    return res.status(400).json({ message: 'Missing required fields: email, password, name' });
-  }
-
+// Register a new user
+router.post('/register', async (req: Request, res: Response) => {
   try {
-    // Check if user already exists
-    const existingUser = await User.findByEmail(email);
+    const { name, email, password } = req.body;
+
+    // Check if email already exists
+    const db = getDb();
+    const existingUser = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
     if (existingUser) {
-      return res.status(409).json({ message: 'Email already in use' });
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Email already in use' 
+      });
     }
 
-    // Create user (password hashing is handled in User.create)
-    const newUser = await User.create({ email, password, name });
-    
-    if (!newUser) {
-        throw new Error('User creation failed unexpectedly after check.');
-    }
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
-    logger.info(`User registered successfully: ${newUser.email} (ID: ${newUser.id})`);
-    
-    // Optionally log the user in immediately and send token
-    generateAndSendToken(newUser as Express.User, res);
+    // Insert user into database
+    const result = db.prepare(
+      'INSERT INTO users (name, email, password) VALUES (?, ?, ?)'
+    ).run(name, email, hashedPassword);
 
-  } catch (error: any) {
-    logger.error('Error during registration:', error);
-    // Handle specific errors like validation or db constraint
-    if (error.message === 'Email already exists') {
-        return res.status(409).json({ message: 'Email already in use' });
-    }
-    next(error); // Pass other errors to the global error handler
+    // Get the newly created user
+    const newUser = db.prepare('SELECT id, name, email FROM users WHERE id = ?').get(result.lastInsertRowid);
+
+    logger.info(`User registered successfully: ${email} (ID: ${result.lastInsertRowid})`);
+
+    // Generate JWT token and send response
+    generateAndSendToken(newUser as AuthUser, res);
+  } catch (error) {
+    const err = error as ApiError;
+    logger.error('Registration error:', err);
+    res.status(err.status || 500).json({ 
+      success: false, 
+      message: err.message || 'Server error during registration'
+    });
   }
 });
 
-// 6. Login User (Local)
-router.post('/login', (req: Request, res: Response, next: NextFunction) => {
-    passport.authenticate('local', { session: false }, (err: any, user: Express.User | false, info: any) => {
-        if (err) {
-            logger.error('Local login error:', err);
-            return next(err);
-        }
-        if (!user) {
-            // Authentication failed (incorrect email/password or other issue)
-            logger.warn(`Local login failed: ${info?.message || 'No user returned'}`);
-            return res.status(401).json({ message: info?.message || 'Invalid credentials' });
-        }
-        // Authentication successful
-        logger.info(`Local login successful for user: ${(user as any).email}`);
-        generateAndSendToken(user, res);
-    })(req, res, next); // Important: call the middleware function
+// Login user
+router.post('/login', (req: Request, res: Response) => {
+  passport.authenticate('local', { session: false }, (err: Error | null, user: Express.User | false, info: AuthInfo) => {
+    if (err) {
+      logger.error('Login error:', err);
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Authentication error' 
+      });
+    }
+    
+    if (!user) {
+      logger.warn(`Login failed: ${info?.message || 'No user returned'}`);
+      return res.status(401).json({ 
+        success: false, 
+        message: info.message || 'Invalid credentials' 
+      });
+    }
+
+    logger.info(`Login successful for user ID: ${(user as AuthUser).id}`);
+    // Generate JWT token and send response
+    generateAndSendToken(user as AuthUser, res);
+  })(req, res);
+});
+
+// Logout route
+// Note: JWT logout is primarily client-side (remove token)
+router.get('/logout', (req: Request, res: Response) => {
+  res.status(200).json({ 
+    success: true, 
+    message: 'Logged out successfully' 
+  });
 });
 
 // === Authentication Status & Logout ===
@@ -85,14 +110,5 @@ router.get('/status', passport.authenticate('jwt', { session: false }), (req: Re
   // If JWT authentication is successful, req.user contains the user payload
   res.json({ isAuthenticated: true, user: req.user });
 });
-
-// 8. Logout User
-// Note: Since we are using JWT, logout is primarily handled on the client-side by deleting the token.
-// This endpoint can be used for any server-side cleanup if needed (e.g., invalidating refresh tokens if implemented).
-router.post('/logout', (req: Request, res: Response) => {
-  // If using sessions alongside JWT (not recommended typically), you would req.logout() and destroy session here.
-  res.json({ message: 'Logout successful (client should clear token)' });
-});
-
 
 export default router; 
