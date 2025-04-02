@@ -1,329 +1,175 @@
-import { MovieDetails, SearchParams, SearchResult } from '@repo/types';
+import axios from 'axios';
+import { MovieDetails, SearchResult, SearchParams } from '@repo/types';
 
-// Use a relative URL for client-side requests
-// Use absolute URL for server-side requests
-const API_BASE_URL_CLIENT = '/api';
-const API_BASE_URL_SERVER = process.env.NEXT_PUBLIC_BACKEND_API_URL || 'http://localhost:5000/api'; // Get from env or default
+// Base URL for the backend API
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
-/**
- * Custom API error class for consistent error handling throughout the application
- */
-export class ApiError extends Error {
-  status?: number;
-  
-  constructor(message: string, status?: number) {
-    super(message);
-    this.name = 'ApiError';
-    this.status = status;
+// --- Axios Instance for API calls ---
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+});
+
+// Interceptor to add JWT token to requests if available
+apiClient.interceptors.request.use(
+  (config) => {
+    // Get token from a secure place (e.g., state management, secure cookie, or localStorage *only* for the token)
+    // For simplicity now, we'll assume a function getToken() exists, 
+    // which AuthContext will provide later.
+    const token = getToken(); 
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
-}
+);
 
-/**
- * Generic fetch function with consistent error handling
- * @param url The URL to fetch
- * @param options Fetch options
- * @returns The parsed response data
- * @throws {ApiError} If the request fails
- */
-async function fetchWithErrorHandling<T>(url: string, options?: RequestInit): Promise<T> {
-  try {
-    const response = await fetch(url, options);
-    
-    if (!response.ok) {
-      // Try to parse error as JSON
-      try {
-        const errorData = await response.json();
-        throw new ApiError(errorData.error || 'An unknown error occurred', response.status);
-      } catch {
-        // If parsing as JSON fails, use text content
-        const errorText = await response.text();
-        throw new ApiError(errorText || `HTTP error ${response.status}`, response.status);
-      }
-    }
-    
-    return await response.json() as T;
-  } catch (error) {
-    if (error instanceof ApiError) {
-      throw error;
-    }
-    // Network errors or other unexpected errors
-    throw new ApiError((error as Error).message || 'Network error occurred');
+// Placeholder for token retrieval - AuthContext will manage this
+// WARNING: Storing JWT in localStorage has security implications (XSS).
+// Consider HttpOnly cookies or in-memory storage with refresh tokens for production.
+let storedToken: string | null = null; 
+const getToken = (): string | null => {
+  // Temporary: Read from localStorage for now until context is updated
+  if (typeof window !== 'undefined') {
+      storedToken = localStorage.getItem('token');
   }
-}
-
-/**
- * Build a URL with query parameters
- * @param baseUrl The base URL (will be determined based on environment)
- * @param params Object containing query parameters
- * @returns Formatted URL with query parameters
- */
-function buildUrl(endpoint: string, params: Record<string, string | number | undefined>): string {
-  const isServer = typeof window === 'undefined';
-  const baseUrl = isServer ? API_BASE_URL_SERVER : API_BASE_URL_CLIENT;
-  const fullUrl = `${baseUrl}${endpoint}`; // Construct full URL first
-
-  // For relative URLs (client-side), create URL relative to current origin if needed
-  // For absolute URLs (server-side or specified), use as is
-  const urlObject = fullUrl.startsWith('/') && !isServer 
-    ? new URL(fullUrl, window.location.origin)
-    : new URL(fullUrl);
-    
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined) {
-      urlObject.searchParams.append(key, String(value));
+  return storedToken;
+};
+export const setToken = (token: string | null) => {
+    if (typeof window !== 'undefined') {
+        if (token) {
+            localStorage.setItem('token', token);
+        } else {
+            localStorage.removeItem('token');
+        }
     }
-  });
-  
-  // For relative client-side URLs, return just the pathname and search
-  // For server-side or absolute client-side, return full URL
-  return fullUrl.startsWith('/') && !isServer 
-    ? `${urlObject.pathname}${urlObject.search}` 
-    : urlObject.toString();
-}
+    storedToken = token;
+};
+// --- End Placeholder ---
 
-/**
- * Search for media items based on provided parameters
- * @param params Search parameters (query, type, year, page)
- * @returns Promise with search results
- */
-export async function searchMedia(params: SearchParams): Promise<SearchResult> {
-  const { query, type, year, page } = params;
-  
-  // Ensure year is always a string if present
-  const yearParam = year ? String(year) : undefined;
-  
-  const url = buildUrl(`/media/search`, {
-    query,
-    type,
-    year: yearParam,
-    page,
-  });
-  
+// --- Media API Functions ---
+
+export const searchMovies = async (params: SearchParams): Promise<SearchResult> => {
   try {
-    return await fetchWithErrorHandling<SearchResult>(url);
+    const response = await apiClient.get('/media/search', { params });
+    return response.data;
   } catch (error) {
-    console.error('Error searching media:', error);
-    // Rethrow the error to be handled by the component
+    console.error('Error searching movies:', error);
+    // Rethrow or return a default error structure
+    throw error; 
+  }
+};
+
+export const getMovieDetails = async (id: string): Promise<MovieDetails> => {
+  try {
+    const response = await apiClient.get(`/media/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching details for ${id}:`, error);
     throw error;
   }
-}
+};
 
-/**
- * Get detailed information about a media item by ID
- * @param id The IMDB ID of the media
- * @returns Promise with detailed media information
- */
-export async function getMediaById(id: string): Promise<MovieDetails> {
-  const url = buildUrl(`/media/${id}`, {});
-  
-  return await fetchWithErrorHandling<MovieDetails>(url, {
-    cache: 'no-store',
-  });
-}
+// --- Authentication API Functions ---
 
-// LocalStorage key for favorites
-const FAVORITES_KEY = 'favorites';
-
-/**
- * Get user favorites from the server (requires authentication)
- * @returns Promise with an array of favorite movie items
- */
-export async function getUserFavorites(): Promise<MovieDetails[]> {
+export const loginUser = async (credentials: { email: string; password: string }): Promise<{ token: string; user: any }> => {
   try {
-    const token = localStorage.getItem('token');
-    
-    // For e2e testing - handle mock token differently
-    if (token === 'mock-token-for-testing') {
-      console.log('[API-MOCK] Detected mock token, returning favorites from localStorage');
-      return getFavorites();
+    const response = await apiClient.post('/auth/login', credentials);
+    // Store token upon successful login (AuthContext should handle this properly)
+    if (response.data.token) {
+      setToken(response.data.token);
     }
-    
-    const url = buildUrl('/favorites', {});
-    const response = await fetchWithErrorHandling<{ success: boolean; favorites: MovieDetails[] }>(url, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-    return response.favorites;
+    return response.data; 
   } catch (error) {
-    // If not authenticated or other error, return empty array
-    console.error('Error fetching favorites:', error);
-    return [];
+    console.error('Login error:', error);
+    throw error;
   }
-}
+};
 
-/**
- * Save a movie to favorites (requires authentication)
- * @param movie The movie to save
- * @returns Promise indicating success
- */
-export async function saveToFavorites(movie: MovieDetails): Promise<boolean> {
+export const registerUser = async (userData: { email: string; password: string; name: string }): Promise<{ token: string; user: any }> => {
   try {
-    // Check if user is logged in
-    const token = localStorage.getItem('token');
-    if (!token) {
-      console.error('User not authenticated');
-      return false;
+    const response = await apiClient.post('/auth/register', userData);
+    // Store token upon successful registration
+    if (response.data.token) {
+      setToken(response.data.token);
     }
-
-    // For e2e testing - handle mock token differently
-    if (token === 'mock-token-for-testing') {
-      console.log('[API-MOCK] Detected mock token, bypassing API call for saveToFavorites');
-      
-      // Update localStorage
-      const favorites = getFavorites();
-      if (!favorites.some((item) => item.imdbID === movie.imdbID)) {
-        localStorage.setItem(FAVORITES_KEY, JSON.stringify([...favorites, movie]));
-        console.log('[API-MOCK] Added to favorites in localStorage:', movie.imdbID);
-      }
-      
-      // Return success for mock token
-      return true;
-    }
-
-    // Add a small delay for e2e test stability
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    const url = buildUrl('/favorites', {});
-    
-    // Try with 2 retries in case of network instability
-    let attempts = 0;
-    const maxAttempts = 3;
-    
-    while (attempts < maxAttempts) {
-      try {
-        await fetchWithErrorHandling<{ success: boolean }>(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ movieId: movie.imdbID })
-        });
-        
-        // If API call is successful, also update local storage for faster access
-        const favorites = getFavorites();
-        if (!favorites.some(item => item.imdbID === movie.imdbID)) {
-          localStorage.setItem(FAVORITES_KEY, JSON.stringify([...favorites, movie]));
-        }
-        
-        console.log('Successfully added to favorites:', movie.imdbID);
-        return true;
-      } catch (error) {
-        attempts++;
-        if (attempts >= maxAttempts) {
-          throw error;
-        }
-        // Wait a bit before retrying
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-    }
-    
-    return false;
+    return response.data;
   } catch (error) {
-    console.error('Error adding to favorites:', error);
-    return false;
+    console.error('Registration error:', error);
+    throw error;
   }
-}
+};
 
-/**
- * Remove a movie from favorites (requires authentication)
- * @param id The IMDB ID of the movie to remove
- * @returns Promise indicating success
- */
-export async function removeFromFavorites(id: string): Promise<boolean> {
+export const checkAuthStatus = async (): Promise<{ isAuthenticated: boolean; user: any | null }> => {
   try {
-    // Check if user is logged in
-    const token = localStorage.getItem('token');
-    if (!token) {
-      console.error('User not authenticated');
-      return false;
+    // If no token exists locally, don't bother hitting the endpoint
+    if (!getToken()) {
+        return { isAuthenticated: false, user: null };
     }
-
-    // For e2e testing - handle mock token differently
-    if (token === 'mock-token-for-testing') {
-      console.log('[API-MOCK] Detected mock token, bypassing API call for removeFromFavorites');
-      
-      // Update localStorage
-      const favorites = getFavorites();
-      const updatedFavorites = favorites.filter((item) => item.imdbID !== id);
-      localStorage.setItem(FAVORITES_KEY, JSON.stringify(updatedFavorites));
-      console.log('[API-MOCK] Removed from favorites in localStorage:', id);
-      
-      // Return success for mock token
-      return true;
+    const response = await apiClient.get('/auth/status');
+    return response.data;
+  } catch (error: any) {
+    // If API returns 401 Unauthorized, it means the token is invalid or expired
+    if (error.response && error.response.status === 401) {
+      setToken(null); // Clear invalid token
+      return { isAuthenticated: false, user: null };
     }
-
-    // Add a small delay for e2e test stability
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    const url = buildUrl(`/favorites/${id}`, {});
-    
-    // Try with 2 retries in case of network instability
-    let attempts = 0;
-    const maxAttempts = 3;
-    
-    while (attempts < maxAttempts) {
-      try {
-        await fetchWithErrorHandling<{ success: boolean }>(url, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        // If API call is successful, also update local storage for faster access
-        const favorites = getFavorites();
-        const updatedFavorites = favorites.filter(item => item.imdbID !== id);
-        localStorage.setItem(FAVORITES_KEY, JSON.stringify(updatedFavorites));
-        
-        console.log('Successfully removed from favorites:', id);
-        return true;
-      } catch (error) {
-        attempts++;
-        if (attempts >= maxAttempts) {
-          throw error;
-        }
-        // Wait a bit before retrying
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-    }
-    
-    return false;
-  } catch (error) {
-    console.error('Error removing from favorites:', error);
-    return false;
+    // Log other errors but treat as unauthenticated
+    console.error('Error checking auth status:', error);
+    return { isAuthenticated: false, user: null }; 
   }
-}
+};
 
-// Local storage functions for favorites - for faster access and fallback
-// These functions are now mainly used for caching rather than as the source of truth
-
-/**
- * Get all favorites from localStorage
- * @returns Array of favorite movie items
- */
-export function getFavorites(): MovieDetails[] {
+export const logoutUser = async (): Promise<{ message: string }> => {
   try {
-    const favorites = localStorage.getItem(FAVORITES_KEY);
-    return favorites ? JSON.parse(favorites) : [];
+    // Clear local token immediately
+    setToken(null);
+    // Inform backend (optional, useful if backend manages sessions/tokens)
+    const response = await apiClient.post('/auth/logout'); 
+    return response.data;
   } catch (error) {
-    console.error('Error getting favorites from localStorage:', error);
-    return [];
+    console.error('Logout error:', error);
+    // Still proceed with client-side logout even if backend call fails
+    setToken(null);
+    throw error;
   }
-}
+};
 
-/**
- * Check if a movie is in favorites
- * @param id The IMDB ID to check
- * @returns Boolean indicating if the movie is in favorites
- */
-export function isInFavorites(id: string): boolean {
+// --- Favorites API Functions (Protected) ---
+
+export const getFavorites = async (): Promise<string[]> => {
   try {
-    const favorites = getFavorites();
-    return favorites.some((item: MovieDetails) => item.imdbID === id);
+    const response = await apiClient.get('/favorites');
+    // Backend returns an array of movie IDs
+    return response.data; 
   } catch (error) {
-    console.error('Error checking favorites:', error);
-    return false;
+    console.error('Error getting favorites:', error);
+    // Return empty array or throw, depending on how UI handles errors
+    return []; 
   }
-}
+};
+
+export const addFavorite = async (movieId: string): Promise<{ message: string; movieId: string }> => {
+  try {
+    const response = await apiClient.post('/favorites', { movieId });
+    return response.data;
+  } catch (error) {
+    console.error(`Error adding favorite ${movieId}:`, error);
+    throw error;
+  }
+};
+
+export const removeFavorite = async (movieId: string): Promise<{ message: string; movieId: string }> => {
+  try {
+    const response = await apiClient.delete(`/favorites/${movieId}`);
+    return response.data;
+  } catch (error) {
+    console.error(`Error removing favorite ${movieId}:`, error);
+    throw error;
+  }
+};
+
+// --- Cleanup: Remove old localStorage based favorite functions ---
+// Removed: isInFavorites, saveToFavorites, removeFromFavorites (old versions), getUserFavorites (old version)
