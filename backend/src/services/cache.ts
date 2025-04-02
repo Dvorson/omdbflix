@@ -1,5 +1,6 @@
 import Redis from 'ioredis';
 import { logger } from '../utils/logger';
+import { config } from '../utils/config';
 
 // Environment variables with defaults for local development
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6380';
@@ -13,9 +14,9 @@ let redisClient: any = null;
  * Initialize Redis client
  */
 export function initializeCache(): void {
-  // Skip Redis initialization if disabled
-  if (!REDIS_ENABLED) {
-    logger.info('Redis cache is disabled');
+  // Skip Redis initialization if disabled or in test environment
+  if (!REDIS_ENABLED || config.nodeEnv === 'test') {
+    logger.info(`Redis cache is ${!REDIS_ENABLED ? 'disabled' : 'skipped in test environment'}`);
     return;
   }
   

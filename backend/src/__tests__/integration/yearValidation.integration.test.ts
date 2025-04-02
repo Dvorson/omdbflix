@@ -1,5 +1,6 @@
 import request from 'supertest';
 import app from '../../app';
+import { config } from '../../utils/config';
 
 describe('Media API Year Validation Integration Test', () => {
   it('should reject search with invalid year parameter "Cuts"', async () => {
@@ -15,7 +16,8 @@ describe('Media API Year Validation Integration Test', () => {
     expect(response.body.error).toContain('Year must be a valid 4-digit year');
   });
   
-  it('should accept search with valid year parameter', async () => {
+  // Skip this test if no API key is available (common in CI environments)
+  (config.omdbApiKey ? it : it.skip)('should accept search with valid year parameter', async () => {
     const response = await request(app)
       .get('/api/media/search')
       .query({

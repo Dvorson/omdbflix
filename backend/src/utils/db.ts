@@ -8,17 +8,30 @@ let db: Database | null = null;
 
 export function initDatabase() {
   try {
+    // Use in-memory database for tests
+    if (process.env.NODE_ENV === 'test') {
+      db = new Database(':memory:');
+      db.pragma('journal_mode = WAL');
+      db.pragma('foreign_keys = ON');
+      logger.info('SQLite database connected (in-memory for tests)');
+      return;
+    }
+
     if (!fs.existsSync(path.dirname(dbPath))) {
       logger.warn(`Database directory ${path.dirname(dbPath)} does not exist. Run setup script first.`);
       return; 
     }
+    
     db = new Database(dbPath, { verbose: process.env.NODE_ENV === 'development' ? logger.debug : undefined });
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
     logger.info(`SQLite database connected at ${dbPath}`);
   } catch (error) {
     logger.error('SQLite database initialization error:', error);
-    process.exit(1);
+    // Don't exit process in test environment
+    if (process.env.NODE_ENV !== 'test') {
+      process.exit(1);
+    }
   }
 }
 
