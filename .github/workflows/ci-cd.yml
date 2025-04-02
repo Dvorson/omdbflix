@@ -126,7 +126,7 @@ jobs:
         # Path relative to root now
         path: playwright-report/ 
 
-  build-and-push:
+  deploy:
     runs-on: ubuntu-latest
     needs: [e2e-tests]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -134,91 +134,33 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18
+        
+    # Deploy frontend to Vercel
+    - name: Install Vercel CLI
+      run: npm install --global vercel@latest
       
-    - name: Login to Docker Hub
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-        
-    - name: Build and push backend
-      uses: docker/build-push-action@v4
-      with:
-        context: ./backend
-        push: true
-        tags: ${{ secrets.DOCKER_USERNAME }}/movie-explorer-api:latest
-        
-    - name: Build and push frontend
-      uses: docker/build-push-action@v4
-      with:
-        context: ./frontend
-        push: true
-        tags: ${{ secrets.DOCKER_USERNAME }}/movie-explorer-frontend:latest
-  
-  deploy:
-    runs-on: ubuntu-latest
-    needs: [build-and-push]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    
-    steps:
-    - uses: actions/checkout@v3
-    
-    # Install kustomize (could also use a setup action)
-    - name: Install Kustomize
+    - name: Deploy Frontend to Vercel
+      working-directory: ./frontend
       run: |
-        curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
-        sudo mv kustomize /usr/local/bin/
-    
-    - name: Set up kubectl
-      uses: azure/setup-kubectl@v3
-      
-    - name: Set up Kubernetes config
-      run: |
-        mkdir -p $HOME/.kube
-        echo "${{ secrets.KUBE_CONFIG }}" > $HOME/.kube/config
-        chmod 600 $HOME/.kube/config
-        
-    # Inject secrets directly into kustomize overlay if needed, 
-    # or rely on base secret being patched/created.
-    # Example: Patching the base secret directly (alternative to creating via kubectl)
-    # - name: Create Kustomization Patch for Secret
-    #   run: |
-    #     echo "apiVersion: v1" > ./k8s/overlays/aws/secrets-patch.yaml
-    #     echo "kind: Secret" >> ./k8s/overlays/aws/secrets-patch.yaml
-    #     echo "metadata:" >> ./k8s/overlays/aws/secrets-patch.yaml
-    #     echo "  name: movie-explorer-secrets" >> ./k8s/overlays/aws/secrets-patch.yaml
-    #     echo "stringData:" >> ./k8s/overlays/aws/secrets-patch.yaml
-    #     echo "  omdb-api-key: ${{ secrets.OMDB_API_KEY }}" >> ./k8s/overlays/aws/secrets-patch.yaml
-    # - name: Add Secret Patch to Kustomization
-    #   run: kustomize edit add patch --path ./k8s/overlays/aws/secrets-patch.yaml --kind Secret --name movie-explorer-secrets
-    #   working-directory: ./k8s/overlays/aws
-
-    # OR: Create secret using kubectl (as done previously is fine too)
-    - name: Update Kubernetes secrets
-      run: |
-        kubectl create secret generic movie-explorer-secrets \
-          --namespace movie-explorer \
-          --from-literal=omdb-api-key=${{ secrets.OMDB_API_KEY }} \
-          --dry-run=client -o yaml | kubectl apply -f -
-          
-    - name: Deploy using Kustomize (AWS Overlay)
+        vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} --yes
       env:
-        # Set for image tag substitution in kustomization.yaml
-        IMAGE_TAG: ${{ github.sha }}
-        # Set DOCKER_USERNAME for placeholder substitution if needed
-        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }} 
-      run: |
-        cd k8s/overlays/aws # Navigate to the overlay directory
-        # Substitute placeholders if necessary BEFORE building
-        # Example: Replace 'your-dockerhub-username' in kustomization.yaml if not using env vars directly
-        # sed -i "s|your-dockerhub-username|$DOCKER_USERNAME|g" kustomization.yaml 
+        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        OMDB_API_KEY: ${{ secrets.OMDB_API_KEY }}
+        NEXT_PUBLIC_API_URL: ${{ secrets.RAILWAY_BACKEND_URL }}
         
-        # Build and apply the manifests
-        kustomize build . | kubectl apply -f -
-        
-    - name: Verify deployment rollout
+    # Deploy backend to Railway
+    - name: Install Railway CLI
+      run: npm install -g @railway/cli
+      
+    - name: Deploy Backend to Railway
+      working-directory: ./backend
       run: |
-        kubectl rollout status deployment/frontend -n movie-explorer
-        kubectl rollout status deployment/backend-api -n movie-explorer 
+        railway up
+      env:
+        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        OMDB_API_KEY: ${{ secrets.OMDB_API_KEY }} 

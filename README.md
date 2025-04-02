@@ -174,21 +174,18 @@ The project uses GitHub Actions for continuous integration and deployment:
 2. On merge to main:
    - Runs all tests including e2e
    - Builds Docker images
-   - Deploys to AWS ECS
+   - Deploys application via Vercel and Railway
 
 ## Deployment
 
-### AWS Deployment
+The application is set up for deployment using Vercel (frontend) and Railway (backend):
 
-The application is set up for deployment to AWS ECS (Elastic Container Service):
+1. Configure deployment credentials as GitHub secrets:
+   - For Vercel (frontend): `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`
+   - For Railway (backend): `RAILWAY_TOKEN`
+   - API keys: `OMDB_API_KEY`
 
-1. Configure AWS credentials as GitHub secrets:
-   - `AWS_ACCESS_KEY_ID`
-   - `AWS_SECRET_ACCESS_KEY`
-
-2. Update AWS resource names in `.github/workflows/deploy.yml` if needed
-
-3. Push to the main branch to trigger deployment
+2. Push to the main branch to trigger deployment
 
 ## Architecture Decisions
 
@@ -225,9 +222,9 @@ While this application serves as a functional demonstration, several considerati
 
 **Scalability:**
 
-*   **Load Balancing:** Deploying multiple instances of both the frontend (Next.js server) and backend (Node.js API) behind load balancers (e.g., AWS ELB, Nginx) would distribute traffic and improve availability.
+*   **Load Balancing:** Deploying multiple instances of both the frontend (Next.js server) and backend (Node.js API) behind load balancers would distribute traffic and improve availability.
 *   **Backend Service Scaling:** The backend Node.js API could be scaled horizontally (more instances). If specific endpoints become bottlenecks (e.g., search), those could potentially be extracted into separate microservices with independent scaling.
-*   **Database:** If user data (authentication, persistent favorites) were added, choosing a scalable database (e.g., PostgreSQL with read replicas, DynamoDB) and optimizing queries would be crucial.
+*   **Database:** If user data (authentication, persistent favorites) were added, choosing a scalable database (e.g., PostgreSQL with read replicas, MongoDB) and optimizing queries would be crucial.
 *   **Caching:** Implementing a distributed cache like Redis (as suggested in bonus points) instead of the current in-memory cache would significantly improve performance under load and allow cache sharing between multiple backend instances.
 *   **CDN:** Using a Content Delivery Network (CDN) for static frontend assets (JS, CSS, images served by Next.js) would reduce load on the origin server and speed up delivery to users globally.
 
@@ -238,7 +235,7 @@ While this application serves as a functional demonstration, several considerati
 *   **Documentation:** Maintaining comprehensive documentation (README, code comments, potentially API documentation using Swagger/OpenAPI for the backend) is vital for onboarding new developers and understanding system behavior.
 *   **Dependency Management:** Regularly updating dependencies and using tools like `npm audit` or Dependabot helps mitigate security vulnerabilities and keeps the tech stack current.
 *   **Monitoring & Logging:** Implementing robust logging (already started with Winston) and integrating monitoring/alerting tools (e.g., Datadog, Sentry, Prometheus/Grafana) would be essential for tracking application health, performance, and errors in production.
-*   **Configuration Management:** Centralizing configuration (beyond basic `.env`) using tools or services appropriate for the deployment environment (e.g., AWS Parameter Store, ConfigMaps in K8s) improves consistency.
+*   **Configuration Management:** Centralizing configuration (beyond basic `.env`) using appropriate tools or services improves consistency.
 
 ## Contributing
 
