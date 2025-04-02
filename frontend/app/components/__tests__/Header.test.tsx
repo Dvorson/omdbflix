@@ -1,31 +1,45 @@
-import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import React, { ReactNode } from 'react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import userEvent from '@testing-library/user-event';
 import Header from '../Header';
-import { AuthProvider } from '../../contexts/AuthContext';
+import { AuthContextType, useAuth } from '../../contexts/AuthContext';
 
 // Mock Next.js hooks
 jest.mock('next/navigation', () => ({
-  usePathname: jest.fn().mockReturnValue('/'),
-  useRouter: jest.fn().mockReturnValue({
-    push: jest.fn(),
-    refresh: jest.fn(),
-    back: jest.fn(),
-    forward: jest.fn()
-  })
+  useRouter: jest.fn().mockReturnValue({ push: jest.fn() }),
 }));
 
 // Mock Link component
 jest.mock('next/link', () => {
   return {
     __esModule: true,
-    default: ({ href, children, className }: { href: string; children: React.ReactNode; className?: string }) => (
-      <a href={href} className={className} data-testid={`link-to-${href}`}>
-        {children}
-      </a>
+    default: ({ href, children, ...props }: { href: string; children: React.ReactNode; [key: string]: any }) => (
+      <a href={href} {...props}>{children}</a>
     ),
   };
 });
+
+// Mock AuthModal (we don't need its full implementation for Header test)
+jest.mock('../AuthModal', () => ({
+  __esModule: true,
+  default: ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => 
+    isOpen ? <div data-testid="auth-modal">Auth Modal <button onClick={onClose}>Close</button></div> : null,
+}));
+
+// Mock ThemeToggle (simpler mock)
+jest.mock('../ThemeToggle', () => ({
+    __esModule: true,
+    default: () => <button data-testid="theme-toggle">Theme</button>,
+}));
+
+// Mock useAuth hook
+const mockUseAuth = useAuth as jest.Mock;
+jest.mock('../../contexts/AuthContext', () => ({
+  useAuth: jest.fn(),
+  // We don't need the full provider for these tests
+  AuthProvider: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+}));
 
 // Mock localStorage
 const localStorageMock = (function() {
@@ -84,66 +98,108 @@ jest.mock('axios', () => ({
   post: jest.fn().mockResolvedValue({ data: { token: 'fake-token', user: { id: '1', name: 'Test', email: 'test@example.com', favorites: [] } } }),
 }));
 
-describe('Header', () => {
-  beforeEach(() => {
-    // Reset mocks
-    jest.clearAllMocks();
-    documentElementMock.classList.add.mockClear();
-    documentElementMock.classList.remove.mockClear();
-    localStorageMock.clear();
-  });
+describe('Header Component', () => {
+  const mockLogin = jest.fn();
+  const mockLogout = jest.fn();
+  const mockRegister = jest.fn();
+  const mockCheckStatus = jest.fn();
 
-  // Helper function to render with AuthProvider
-  const renderWithAuth = (ui: React.ReactElement) => {
-    return render(
-      <AuthProvider>
-        {ui}
-      </AuthProvider>
-    );
+  const mockUnauthenticatedState: Partial<AuthContextType> = {
+    user: null,
+    isAuthenticated: false,
+    isLoading: false,
+    login: mockLogin,
+    logout: mockLogout,
+    register: mockRegister,
+    checkStatus: mockCheckStatus,
   };
 
-  it('renders navigation links', () => {
-    renderWithAuth(<Header />);
-    
-    // Use getAllByTestId to handle multiple elements with the same testId
-    const homeLinks = screen.getAllByTestId('link-to-/');
-    expect(homeLinks.length).toBeGreaterThan(0);
-    expect(screen.getByTestId('link-to-/favorites')).toBeInTheDocument();
+  const mockAuthenticatedState: Partial<AuthContextType> = {
+    user: { id: 1, name: 'Test User', email: 'test@example.com' },
+    isAuthenticated: true,
+    isLoading: false,
+    login: mockLogin,
+    logout: mockLogout,
+    register: mockRegister,
+    checkStatus: mockCheckStatus,
+  };
+  
+  const mockLoadingState: Partial<AuthContextType> = {
+      user: null,
+      isAuthenticated: false,
+      isLoading: true,
+      login: mockLogin,
+      logout: mockLogout,
+      register: mockRegister,
+      checkStatus: mockCheckStatus,
+    };
+
+  beforeEach(() => {
+    // Reset mocks before each test
+    jest.clearAllMocks();
+    mockUseAuth.mockImplementation(() => mockUnauthenticatedState); // Default to unauthenticated
+  });
+
+  it('renders logo and basic links', () => {
+    render(<Header />);
     expect(screen.getByText('Movie Explorer')).toBeInTheDocument();
-    expect(screen.getByText('Home')).toBeInTheDocument();
-    expect(screen.getByText('Favorites')).toBeInTheDocument();
+    // Check for link presence via text content
+    expect(screen.getByText('Home')).toBeInTheDocument(); 
+    // Favorites link shouldn't be visible when logged out initially
+    expect(screen.queryByText('Favorites')).not.toBeInTheDocument();
   });
 
-  it('toggles dark mode when the button is clicked', () => {
-    renderWithAuth(<Header />);
-    
-    // Initially, dark mode should be off (from our mock)
-    expect(documentElementMock.classList.add).not.toHaveBeenCalledWith('dark');
-    
-    // Find and click the dark mode toggle button using data-testid, get the first one
-    const darkModeButtons = screen.getAllByTestId('theme-toggle');
-    const darkModeButton = darkModeButtons[0];
-    fireEvent.click(darkModeButton);
-    
-    // Dark mode should be on after click
-    expect(documentElementMock.classList.add).toHaveBeenCalledWith('dark');
-    expect(localStorageMock.getItem('darkMode')).toBe('true');
-    
-    // Click again to turn off dark mode
-    fireEvent.click(darkModeButton);
-    
-    // Dark mode should be off after second click
-    expect(documentElementMock.classList.remove).toHaveBeenCalledWith('dark');
-    expect(localStorageMock.getItem('darkMode')).toBe('false');
+  it('renders Sign In button when unauthenticated', () => {
+    render(<Header />);
+    expect(screen.getByTestId('sign-in-button')).toBeInTheDocument();
+    expect(screen.queryByText(/hi, test user/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /sign out/i })).not.toBeInTheDocument();
   });
 
-  it('initializes dark mode from localStorage', () => {
-    // Set dark mode preference in localStorage
-    localStorageMock.setItem('darkMode', 'true');
+  it('opens AuthModal when Sign In is clicked', async () => {
+    render(<Header />);
+    expect(screen.queryByTestId('auth-modal')).not.toBeInTheDocument();
     
-    renderWithAuth(<Header />);
+    const signInButton = screen.getByTestId('sign-in-button');
+    await userEvent.click(signInButton);
     
-    // Dark mode should be enabled
-    expect(documentElementMock.classList.add).toHaveBeenCalledWith('dark');
+    expect(screen.getByTestId('auth-modal')).toBeInTheDocument();
+    
+    // Test closing the modal
+    const closeButton = screen.getByRole('button', { name: /close/i });
+    await userEvent.click(closeButton);
+    expect(screen.queryByTestId('auth-modal')).not.toBeInTheDocument();
   });
+
+  it('renders user info and Sign Out button when authenticated', () => {
+    mockUseAuth.mockImplementation(() => mockAuthenticatedState);
+    render(<Header />);
+    
+    expect(screen.getByText(/hi, test user/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /sign out/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /sign in/i })).not.toBeInTheDocument();
+    // Favorites link should be visible when logged in
+    expect(screen.getByText('Favorites')).toBeInTheDocument(); 
+  });
+
+  it('calls logout from context when Sign Out is clicked', async () => {
+    mockUseAuth.mockImplementation(() => mockAuthenticatedState);
+    render(<Header />);
+    
+    const signOutButton = screen.getByRole('button', { name: /sign out/i });
+    await userEvent.click(signOutButton);
+    
+    expect(mockLogout).toHaveBeenCalledTimes(1);
+  });
+  
+  it('renders loading indicators when isLoading is true', () => {
+      mockUseAuth.mockImplementation(() => mockLoadingState);
+      render(<Header />);
+      
+      // Check for multiple loading spinners (mobile and desktop)
+      expect(screen.getAllByRole('status', { hidden: true }).length).toBeGreaterThan(0); 
+      // Buttons should be absent or potentially disabled (check based on implementation)
+      expect(screen.queryByRole('button', { name: /sign in/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /sign out/i })).not.toBeInTheDocument();
+    });
 }); 

@@ -2,43 +2,99 @@ import React, { useEffect } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
-import axios from 'axios';
 import { AuthProvider, useAuth } from '../app/contexts/AuthContext';
 import { act } from 'react';
 
-// Mock axios
-jest.mock('axios');
-const mockedAxios = axios as jest.Mocked<typeof axios>;
+// Mock the API service module
+jest.mock('../app/services/api', () => {
+  // Start with actual implementations from the original module
+  const actualModule = jest.requireActual('../app/services/api');
+  
+  // Create mock functions
+  const setToken = jest.fn(actualModule.setToken);
+  
+  const loginUser = jest.fn(async (credentials) => {
+    if (credentials.email === 'bad@example.com') {
+      // For the bad login test
+      setToken(null);
+      throw new Error('Invalid credentials');
+    }
+    // For the successful login test
+    const mockUser = { id: 1, name: 'Test User', email: 'test@example.com' };
+    const response = { token: 'test-token', user: mockUser };
+    setToken(response.token);
+    return response;
+  });
+  
+  const registerUser = jest.fn(async (userData) => {
+    // For the successful registration test
+    const mockUser = { id: 2, name: userData.name, email: userData.email };
+    const response = { token: 'new-test-token-456', user: mockUser };
+    setToken(response.token);
+    return response;
+  });
+  
+  const logoutUser = jest.fn(async () => {
+    // For the logout test
+    setToken(null);
+    return { message: 'Logged out successfully' };
+  });
+  
+  // Return the mock module
+  return {
+    ...actualModule,
+    loginUser,
+    registerUser,
+    logoutUser,
+    setToken,
+    checkAuthStatus: jest.fn(),
+  };
+});
+
+// Import the mock functions for assertions
+import { 
+    loginUser as apiLoginUser,
+    registerUser as apiRegisterUser,
+    checkAuthStatus as apiCheckAuthStatus,
+    logoutUser as apiLogoutUser,
+    setToken as apiSetToken
+} from '../app/services/api';
+
+// Cast to mocked functions
+const mockedApiLoginUser = apiLoginUser as jest.MockedFunction<typeof apiLoginUser>;
+const mockedApiRegisterUser = apiRegisterUser as jest.MockedFunction<typeof apiRegisterUser>;
+const mockedApiCheckAuthStatus = apiCheckAuthStatus as jest.MockedFunction<typeof apiCheckAuthStatus>;
+const mockedApiLogoutUser = apiLogoutUser as jest.MockedFunction<typeof apiLogoutUser>;
+const mockedApiSetToken = apiSetToken as jest.MockedFunction<typeof apiSetToken>;
+
+// Mock User Data for tests
+const mockUser = {
+  id: 1,
+  name: 'Test User',
+  email: 'test@example.com',
+};
 
 // Test component that uses the auth context
 const TestComponent = () => {
-  const { user, isAuthenticated, login, logout, updateFavorites } = useAuth();
+  const { user, isAuthenticated, isLoading, login, logout, register } = useAuth();
   
   return (
     <div>
-      <div data-testid="auth-status">{isAuthenticated ? 'Authenticated' : 'Not Authenticated'}</div>
+      <div data-testid="auth-status">{isLoading ? 'Loading' : isAuthenticated ? 'Authenticated' : 'Not Authenticated'}</div>
       {user && <div data-testid="user-name">{user.name}</div>}
-      {user && <div data-testid="favorites-list">{user?.favorites?.join(',') || ''}</div>}
-      <button onClick={() => login('test@example.com', 'password123')} data-testid="login-button">
+      <button onClick={() => login({ email: 'test@example.com', password: 'password123' })} data-testid="login-button">
         Login
+      </button>
+      <button onClick={() => register({ name:'Reg User', email: 'reg@example.com', password: 'password123' })} data-testid="register-button">
+        Register
       </button>
       <button onClick={logout} data-testid="logout-button">
         Logout
       </button>
       <button
-        onClick={() => {
-          if (user) {
-            updateFavorites(['movie1', 'movie2']);
-          }
-        }}
-        data-testid="update-favorites-button"
-      >
-        Update Favorites
-      </button>
-      <button
         onClick={async () => {
           try {
-            await login('bad@example.com', 'wrongpassword');
+            await login({ email: 'bad@example.com', password: 'wrongpassword' });
           } catch (error) {
             document.body.setAttribute('data-error', (error as Error).message);
           }
@@ -51,55 +107,16 @@ const TestComponent = () => {
   );
 };
 
-// Direct test component to specifically verify updateFavorites 
-const UpdateFavoritesTestComponent = () => {
-  const { user, updateFavorites } = useAuth();
-  
-  useEffect(() => {
-    // Update favorites when component mounts
-    if (user) {
-      updateFavorites(['movie1', 'movie2']);
-    }
-  }, [user, updateFavorites]);
-  
-  return (
-    <div>
-      {user && <div data-testid="user-data">{JSON.stringify(user)}</div>}
-      {user && <div data-testid="favorites-list">{user.favorites.join(',')}</div>}
-    </div>
-  );
-};
-
 describe('AuthContext', () => {
-  // Mock localStorage for all tests
-  let mockLocalStorage: { [key: string]: string } = {};
   
   beforeEach(() => {
     // Clear all mocks before each test
     jest.clearAllMocks();
-    mockLocalStorage = {};
-    
-    // Mock localStorage
-    Object.defineProperty(window, 'localStorage', {
-      value: {
-        getItem: jest.fn(key => mockLocalStorage[key] || null),
-        setItem: jest.fn((key, value) => {
-          mockLocalStorage[key] = value;
-        }),
-        removeItem: jest.fn(key => {
-          delete mockLocalStorage[key];
-        }),
-      },
-      writable: true,
-    });
-
-    // Reset axios default headers
-    axios.defaults.headers = { common: {} } as any;
   });
   
-  it('should provide initial unauthenticated state', async () => {
-    // Mock axios get to simulate no user found
-    mockedAxios.get.mockRejectedValueOnce(new Error('No token'));
+  it('should provide initial loading then unauthenticated state', async () => {
+    // Mock checkAuthStatus to return unauthenticated
+    mockedApiCheckAuthStatus.mockResolvedValue({ isAuthenticated: false, user: null });
     
     render(
       <AuthProvider>
@@ -107,21 +124,22 @@ describe('AuthContext', () => {
       </AuthProvider>
     );
     
+    // Initial state should be loading
+    expect(screen.getByTestId('auth-status')).toHaveTextContent('Loading');
+
     // Wait for the initial auth check to complete
     await waitFor(() => {
       expect(screen.getByTestId('auth-status')).toHaveTextContent('Not Authenticated');
     });
-    
+    expect(mockedApiCheckAuthStatus).toHaveBeenCalledTimes(1);
     expect(screen.queryByTestId('user-name')).not.toBeInTheDocument();
   });
   
-  it('should authenticate user on login', async () => {
-    // Mock successful login response
-    const mockUser = { id: '123', name: 'Test User', email: 'test@example.com', favorites: [] };
-    const mockToken = 'test-token-123';
-    mockedAxios.post.mockResolvedValueOnce({
-      data: { token: mockToken, user: mockUser }
-    });
+  it('should authenticate user on successful login', async () => {
+    // Mock API responses for this specific test
+    const mockToken = 'test-token';
+    mockedApiCheckAuthStatus.mockResolvedValueOnce({ isAuthenticated: false, user: null });
+    mockedApiLoginUser.mockResolvedValueOnce({ token: mockToken, user: mockUser });
     
     render(
       <AuthProvider>
@@ -131,36 +149,30 @@ describe('AuthContext', () => {
     
     // Wait for initial auth check to complete
     await waitFor(() => {
-      expect(screen.getByTestId('auth-status')).toBeInTheDocument();
+      expect(screen.getByTestId('auth-status')).toHaveTextContent('Not Authenticated');
     });
     
-    // Click login button
+    // Perform login
+    const loginButton = screen.getByTestId('login-button');
     await act(async () => {
-      userEvent.click(screen.getByTestId('login-button'));
+      await userEvent.click(loginButton);
     });
     
-    // Check that auth state was updated
+    // Verify authenticated state by focusing on UI indicators
     await waitFor(() => {
       expect(screen.getByTestId('auth-status')).toHaveTextContent('Authenticated');
       expect(screen.getByTestId('user-name')).toHaveTextContent('Test User');
     });
     
-    // Check that token was stored in localStorage
-    expect(window.localStorage.setItem).toHaveBeenCalledWith('token', mockToken);
-    
-    // Check that axios authorization header was set
-    expect(axios.defaults.headers.common['Authorization']).toBe(`Bearer ${mockToken}`);
+    // Verify the mock was called with right arguments
+    expect(mockedApiLoginUser).toHaveBeenCalledWith({ email: 'test@example.com', password: 'password123' });
   });
   
-  it('should logout user', async () => {
-    // Mock initial authenticated state
-    const mockUser = { id: '123', name: 'Test User', email: 'test@example.com', favorites: [] };
-    const mockToken = 'test-token-123';
-    mockLocalStorage['token'] = mockToken;
-    
-    mockedAxios.get.mockResolvedValueOnce({
-      data: { success: true, user: mockUser }
-    });
+  it('should handle login failure', async () => {
+    // Mock API responses for this specific test
+    mockedApiCheckAuthStatus.mockResolvedValueOnce({ isAuthenticated: false, user: null });
+    const loginError = new Error('Invalid credentials');
+    mockedApiLoginUser.mockRejectedValueOnce(loginError);
     
     render(
       <AuthProvider>
@@ -168,172 +180,82 @@ describe('AuthContext', () => {
       </AuthProvider>
     );
     
-    // Wait for initial auth check to complete with authenticated state
-    await waitFor(() => {
-      expect(screen.getByTestId('auth-status')).toHaveTextContent('Authenticated');
-    });
-    
-    // Click logout button
-    await act(async () => {
-      userEvent.click(screen.getByTestId('logout-button'));
-    });
-    
-    // Check that auth state was updated
+    // Wait for initial auth check to complete
     await waitFor(() => {
       expect(screen.getByTestId('auth-status')).toHaveTextContent('Not Authenticated');
-      expect(screen.queryByTestId('user-name')).not.toBeInTheDocument();
     });
     
-    // Check that token was removed from localStorage
-    expect(window.localStorage.removeItem).toHaveBeenCalledWith('token');
-    
-    // Check that axios authorization header was removed
-    expect(axios.defaults.headers.common['Authorization']).toBeUndefined();
-  });
-  
-  it('should restore auth state from localStorage on mount', async () => {
-    // Mock localStorage with an existing token
-    const mockUser = { id: '123', name: 'Test User', email: 'test@example.com', favorites: [] };
-    const mockToken = 'test-token-123';
-    mockLocalStorage['token'] = mockToken;
-    
-    // Mock successful user fetch response
-    mockedAxios.get.mockResolvedValueOnce({
-      data: { success: true, user: mockUser }
-    });
-    
-    render(
-      <AuthProvider>
-        <TestComponent />
-      </AuthProvider>
-    );
-    
-    // Check that auth state was restored from localStorage
-    await waitFor(() => {
-      expect(screen.getByTestId('auth-status')).toHaveTextContent('Authenticated');
-      expect(screen.getByTestId('user-name')).toHaveTextContent('Test User');
-    });
-    
-    // Check that axios authorization header was set
-    expect(axios.defaults.headers.common['Authorization']).toBe(`Bearer ${mockToken}`);
-  });
-
-  it('should update favorites list when updateFavorites is called', async () => {
-    // Create mockUser with favorites array
-    const mockUser = { 
-      id: '123', 
-      name: 'Test User', 
-      email: 'test@example.com', 
-      favorites: ['movie1'] 
-    };
-    
-    const mockToken = 'test-token-123';
-    mockLocalStorage['token'] = mockToken;
-    
-    // Mock successful user fetch response
-    mockedAxios.get.mockResolvedValueOnce({
-      data: { success: true, user: mockUser }
-    });
-    
-    // Use the simpler test component
-    render(
-      <AuthProvider>
-        <UpdateFavoritesTestComponent />
-      </AuthProvider>
-    );
-    
-    // Wait for the user data to appear
-    await waitFor(() => {
-      expect(screen.getByTestId('user-data')).toBeInTheDocument();
-    });
-    
-    // Check that the favorites list has been updated
-    await waitFor(() => {
-      expect(screen.getByTestId('favorites-list')).toHaveTextContent('movie1,movie2');
-    });
-  });
-
-  it('clears user data and token on logout', async () => {
-    // Setup
-    const mockUser = { id: '123', name: 'Test User', email: 'test@example.com', favorites: [] };
-    const mockToken = 'test-token-123';
-    mockLocalStorage['token'] = mockToken;
-    
-    // Mock successful user fetch response
-    mockedAxios.get.mockResolvedValueOnce({
-      data: { success: true, user: mockUser }
-    });
-    
-    render(
-      <AuthProvider>
-        <TestComponent />
-      </AuthProvider>
-    );
-    
-    // Wait for auth to be initialized
-    await waitFor(() => {
-      expect(screen.getByTestId('auth-status')).toHaveTextContent('Authenticated');
-      expect(screen.getByTestId('user-name')).toHaveTextContent('Test User');
-    });
-    
-    // Call logout
+    // Click the bad login button that catches errors
+    const badLoginBtn = screen.getByTestId('bad-login-button');
     await act(async () => {
-      userEvent.click(screen.getByTestId('logout-button'));
+      await userEvent.click(badLoginBtn);
     });
     
-    // Verify state after logout
-    await waitFor(() => {
-      expect(screen.getByTestId('auth-status')).toHaveTextContent('Not Authenticated');
-      expect(screen.queryByTestId('user-name')).not.toBeInTheDocument();
-    });
-    
-    expect(window.localStorage.removeItem).toHaveBeenCalledWith('token');
-  });
-
-  it('handles authentication failures gracefully', async () => {
-    // Mock failed login
-    mockedAxios.post.mockRejectedValueOnce({
-      response: {
-        data: {
-          message: 'Invalid credentials'
-        }
-      }
-    });
-    
-    render(
-      <AuthProvider>
-        <TestComponent />
-      </AuthProvider>
-    );
-    
-    // Wait for auth to be initialized
-    await waitFor(() => {
-      expect(screen.getByTestId('auth-status')).toBeInTheDocument();
-    });
-    
-    // Attempt to login with bad credentials
-    await act(async () => {
-      userEvent.click(screen.getByTestId('bad-login-button'));
-    });
-    
-    // Verify error was displayed
-    await waitFor(() => {
-      expect(document.body).toHaveAttribute('data-error', 'Invalid credentials');
-    });
-    
-    // Verify user is still unauthenticated
+    // Verify error message was captured (simple way for test)
+    expect(document.body.getAttribute('data-error')).toBe('Invalid credentials');
+    // Verify user is still unauthenticated in UI
     expect(screen.getByTestId('auth-status')).toHaveTextContent('Not Authenticated');
   });
 
-  it('properly sets axios authorization header after login', async () => {
-    // Setup
-    const mockUser = { id: '123', name: 'Test User', email: 'test@example.com', favorites: [] };
-    const mockToken = 'test-token-123';
+  it('should authenticate user on successful registration', async () => {
+    // Mock responses for this specific test
+    mockedApiCheckAuthStatus.mockResolvedValueOnce({ isAuthenticated: false, user: null });
     
-    // Mock successful login response
-    mockedAxios.post.mockResolvedValueOnce({
-      data: { token: mockToken, user: mockUser }
+    // Prepare the new user data
+    const newUser = { id: 2, name: 'Reg User', email: 'reg@example.com' };
+    const mockToken = 'new-test-token-456';
+    mockedApiRegisterUser.mockResolvedValueOnce({ token: mockToken, user: newUser });
+    
+    render(
+      <AuthProvider>
+        <TestComponent />
+      </AuthProvider>
+    );
+
+    // Wait for initial loading
+    await waitFor(() => expect(screen.getByTestId('auth-status')).toHaveTextContent('Not Authenticated'));
+
+    // Click register button
+    await act(async () => {
+      await userEvent.click(screen.getByTestId('register-button'));
     });
+    
+    // Verify UI state changes
+    await waitFor(() => {
+      expect(screen.getByTestId('auth-status')).toHaveTextContent('Authenticated');
+      expect(screen.getByTestId('user-name')).toHaveTextContent('Reg User');
+    });
+  });
+
+  it('should handle registration failure', async () => {
+    // Mock responses for this specific test
+    mockedApiCheckAuthStatus.mockResolvedValueOnce({ isAuthenticated: false, user: null });
+    const regError = new Error('Email already exists');
+    mockedApiRegisterUser.mockRejectedValueOnce(regError);
+    
+    render(
+      <AuthProvider>
+        <TestComponent />
+      </AuthProvider>
+    );
+
+    // Wait for initial loading
+    await waitFor(() => expect(screen.getByTestId('auth-status')).toHaveTextContent('Not Authenticated'));
+
+    // Attempt registration
+    await act(async () => {
+      userEvent.click(screen.getByTestId('register-button'));
+      await Promise.resolve();
+    });
+
+    // Verify state didn't change in UI
+    expect(screen.getByTestId('auth-status')).toHaveTextContent('Not Authenticated');
+  });
+
+  it('should logout user', async () => {
+    // Mock responses for this specific test
+    mockedApiCheckAuthStatus.mockResolvedValueOnce({ isAuthenticated: true, user: mockUser });
+    mockedApiLogoutUser.mockResolvedValueOnce({ message: 'Logged out successfully' });
     
     render(
       <AuthProvider>
@@ -341,19 +263,45 @@ describe('AuthContext', () => {
       </AuthProvider>
     );
     
-    // Wait for auth to be initialized
+    // Wait for initial auth check to complete
     await waitFor(() => {
-      expect(screen.getByTestId('auth-status')).toBeInTheDocument();
+      expect(screen.getByTestId('auth-status')).toHaveTextContent('Authenticated');
     });
     
-    // Login
+    // Perform logout
+    const logoutButton = screen.getByTestId('logout-button');
     await act(async () => {
-      userEvent.click(screen.getByTestId('login-button'));
+      await userEvent.click(logoutButton);
     });
     
-    // Verify header was set
+    // Check API was called
+    expect(mockedApiLogoutUser).toHaveBeenCalledTimes(1);
+
+    // Verify unauthenticated state in UI
     await waitFor(() => {
-      expect(axios.defaults.headers.common['Authorization']).toBe(`Bearer ${mockToken}`);
+      expect(screen.getByTestId('auth-status')).toHaveTextContent('Not Authenticated');
+      expect(screen.queryByTestId('user-name')).not.toBeInTheDocument();
     });
+  });
+
+  it('should restore auth state if token exists on mount', async () => {
+    // Mock checkAuthStatus returning authenticated user
+    mockedApiCheckAuthStatus.mockResolvedValue({ isAuthenticated: true, user: mockUser });
+    
+    render(
+      <AuthProvider>
+        <TestComponent />
+      </AuthProvider>
+    );
+    
+    // Initial state is Loading
+    expect(screen.getByTestId('auth-status')).toHaveTextContent('Loading');
+
+    // Check that auth state was restored
+    await waitFor(() => {
+      expect(screen.getByTestId('auth-status')).toHaveTextContent('Authenticated');
+      expect(screen.getByTestId('user-name')).toHaveTextContent('Test User');
+    });
+    expect(mockedApiCheckAuthStatus).toHaveBeenCalledTimes(1);
   });
 }); 

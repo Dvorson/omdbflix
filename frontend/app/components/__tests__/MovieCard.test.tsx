@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import MovieCard from '../MovieCard';
-import { Movie } from '@repo/types';
+import { MovieDetails } from '@repo/types'; // Use MovieDetails for full type
 import { AuthProvider } from '../../contexts/AuthContext';
 
 // Mock Next.js components
@@ -34,55 +34,81 @@ jest.mock('axios', () => ({
   post: jest.fn().mockResolvedValue({ data: { token: 'fake-token', user: { id: '1', name: 'Test', email: 'test@example.com', favorites: [] } } }),
 }));
 
+// Mock FavoriteButton directly
+jest.mock('../FavoriteButton', () => ({
+  __esModule: true,
+  default: ({ movie }: { movie: MovieDetails }) => <button data-testid="mock-favorite-button">Fav</button>,
+}));
+
+// Mock useAuth hook
+const mockUseAuth = jest.fn();
+jest.mock('../../contexts/AuthContext', () => ({
+  useAuth: () => mockUseAuth(), // Use the mock function
+}));
+
 describe('MovieCard', () => {
-  const mockMovie: Movie = {
+  const mockMovie: MovieDetails = {
     imdbID: 'tt0111161',
     Title: 'The Shawshank Redemption',
     Year: '1994',
     Type: 'movie',
     Poster: 'https://example.com/poster.jpg',
+    // Add other required fields for MovieDetails
+    Rated:'R', Released:'', Runtime:'', Genre:'', Director:'', Writer:'', Actors:'', Plot:'', Language:'', Country:'', Awards:'', Ratings:[], Metascore:'', imdbRating:'', imdbVotes:''
   };
 
-  const mockMovieNoPoster: Movie = {
+  const mockMovieNoPoster: MovieDetails = {
     imdbID: 'tt0111162',
     Title: 'The Godfather',
     Year: '1972',
     Type: 'movie',
     Poster: 'N/A',
+    // Add other required fields
+    Rated:'R', Released:'', Runtime:'', Genre:'', Director:'', Writer:'', Actors:'', Plot:'', Language:'', Country:'', Awards:'', Ratings:[], Metascore:'', imdbRating:'', imdbVotes:''
   };
 
-  // Helper function to render with AuthProvider
-  const renderWithAuth = (ui: React.ReactElement) => {
-    return render(
-      <AuthProvider>
-        {ui}
-      </AuthProvider>
-    );
-  };
+  beforeEach(() => {
+    // Reset mocks
+    jest.clearAllMocks();
+    // Default mock state for useAuth (unauthenticated)
+    mockUseAuth.mockReturnValue({ isAuthenticated: false }); 
+  });
 
   it('renders correctly with a movie prop', () => {
-    renderWithAuth(<MovieCard movie={mockMovie} />);
+    render(<MovieCard movie={mockMovie} />);
     
     expect(screen.getByText('The Shawshank Redemption')).toBeInTheDocument();
     expect(screen.getByText('1994')).toBeInTheDocument();
     expect(screen.getByText(/movie/i)).toBeInTheDocument();
     
-    // Check link
     const link = screen.getByRole('link');
     expect(link).toHaveAttribute('href', '/tt0111161');
     
-    // Check poster image
     const image = screen.getByAltText('The Shawshank Redemption poster');
     expect(image).toHaveAttribute('src', 'https://example.com/poster.jpg');
   });
 
   it('uses a placeholder image when poster is N/A', () => {
-    renderWithAuth(<MovieCard movie={mockMovieNoPoster} />);
-    
+    render(<MovieCard movie={mockMovieNoPoster} />);
     expect(screen.getByText('The Godfather')).toBeInTheDocument();
-    
-    // Check placeholder image
     const image = screen.getByAltText('The Godfather poster');
     expect(image).toHaveAttribute('src', '/placeholder.png');
+  });
+
+  it('renders disabled favorite button when user is not authenticated', () => {
+    mockUseAuth.mockReturnValue({ isAuthenticated: false }); 
+    render(<MovieCard movie={mockMovie} />);
+    const button = screen.getByRole('button', { name: /add .* to favorites/i });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('title', 'Sign in to add to favorites');
+  });
+
+  it('renders enabled favorite button (mock) when user is authenticated', () => {
+    mockUseAuth.mockReturnValue({ isAuthenticated: true });
+    render(<MovieCard movie={mockMovie} />);
+    // We are checking for our mock button now
+    expect(screen.getByTestId('mock-favorite-button')).toBeInTheDocument();
+    // The disabled button should NOT be present
+    expect(screen.queryByRole('button', { name: /sign in to add/i })).not.toBeInTheDocument();
   });
 }); 
