@@ -59,4 +59,17 @@
 
 # Tooling
 **/.vercel
-**/.turbo 
+**/.turbo
+
+# Screenshot artifacts from tests
+*-click-*.png
+*-click.png
+*-reload.png
+before-*.png
+after-*.png
+*-state.png
+*-viewport.png
+desktop-*.png
+mobile-*.png
+favorites-*.png
+initial-*.png 
