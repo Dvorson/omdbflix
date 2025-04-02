@@ -16,6 +16,7 @@
 **/test-results/
 **/playwright-report/
 **/playwright/.cache/
+**/test-results/screenshots/
 
 # Environment variables
 **/.env
@@ -72,4 +73,6 @@ after-*.png
 desktop-*.png
 mobile-*.png
 favorites-*.png
-initial-*.png 
+initial-*.png
+*-error.png
+*-timeout.png 

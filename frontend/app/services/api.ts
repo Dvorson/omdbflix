@@ -1,14 +1,16 @@
 import axios from 'axios';
 import { MovieDetails, SearchResult, SearchParams, AuthUser } from '@repo/types';
 
-
-const apiClient = axios.create({
-});
+const token: string | null = null;
+const apiClient = axios.create({});
 
 apiClient.interceptors.request.use(
   (config) => {
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
   (error) => {
     return Promise.reject(error);
   }
@@ -20,6 +22,7 @@ let storedToken: string | null = null;
 const getToken = (): string | null => {
   if (typeof window !== 'undefined') {
       storedToken = localStorage.getItem('token');
+  }
   return storedToken;
 };
 export const setToken = (token: string | null) => {
@@ -40,7 +43,9 @@ export const searchMovies = async (params: SearchParams): Promise<SearchResult> 
     return response.data;
   } catch (error) {
     console.error('Error searching movies:', error);
+    throw error;
   }
+};
 
 export const getMovieDetails = async (id: string): Promise<MovieDetails> => {
   try {
@@ -63,6 +68,7 @@ export const loginUser = async (credentials: { email: string; password: string }
   } catch (error) {
     console.error('Login error:', error);
     throw error;
+  }
 };
 
 export const registerUser = async (userData: { email: string; password: string; name: string }): Promise<{ token: string; user: AuthUser }> => {
@@ -112,16 +118,20 @@ export const getFavorites = async (): Promise<string[]> => {
     return response.data; 
   } catch (error) {
     console.error('Error getting favorites:', error);
+    throw error;
   }
+};
 
 export const addFavorite = async (movieId: string): Promise<{ message: string; movieId: string }> => {
   try {
     const response = await apiClient.post('/favorites', { movieId });
+    return response.data;
   } catch (error) {
     console.error(`Error adding favorite ${movieId}:`, error);
     throw error;
   }
 };
+
 export const removeFavorite = async (movieId: string): Promise<{ message: string; movieId: string }> => {
   try {
     const response = await apiClient.delete(`/favorites/${movieId}`);

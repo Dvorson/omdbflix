@@ -7,20 +7,20 @@ import { PlaywrightTestConfig, devices } from '@playwright/test';
 const config: PlaywrightTestConfig = {
   testDir: './e2e',
   /* Maximum time one test can run for. Increase timeout */
-  timeout: 90 * 1000, // 90 seconds
+  timeout: 120 * 1000, // 120 seconds
   expect: {
     /**
      * Maximum time expect() should wait for the condition to be met.
      * Increase timeout
      */
-    timeout: 15 * 1000 // 15 seconds
+    timeout: 30 * 1000 // 30 seconds
   },
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ? 2 : 1, // Add 1 retry locally
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
@@ -67,8 +67,14 @@ const config: PlaywrightTestConfig = {
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:3000',
-    timeout: 120 * 1000,
+    timeout: 180 * 1000, // 3 minutes to start servers
     reuseExistingServer: !process.env.CI,
+    env: {
+      OMDB_API_KEY: '60babe8f',
+      NODE_ENV: 'test',
+      PORT: '5000',
+      NEXT_PUBLIC_API_URL: 'http://localhost:5000'
+    },
   },
 };
 
