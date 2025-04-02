@@ -48,6 +48,7 @@
     "concurrently": "^8.2.2",
     "husky": "^8.0.3",
     "lint-staged": "^15.1.0",
+    "prettier": "^3.5.3",
     "wait-on": "^8.0.3"
   },
   "engines": {
@@ -63,8 +64,11 @@
     }
   },
   "lint-staged": {
-    "*.{js,ts,tsx}": [
+    "*.{js,jsx,ts,tsx}": [
       "eslint --fix"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
     ]
   }
 }

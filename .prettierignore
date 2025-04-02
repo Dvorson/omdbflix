@@ -1,0 +1,28 @@
+# Build artifacts
+dist
+build
+.next
+out
+coverage
+node_modules
+
+# Package files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Generated files
+*.generated.*
+*.min.*
+
+# Media files
+*.png
+*.jpg
+*.gif
+*.svg
+*.ico
+*.pdf
+
+# Other
+.git
+.husky 

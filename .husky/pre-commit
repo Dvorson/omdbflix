@@ -1,0 +1,25 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Check if the NO_VERIFY flag is set
+if [ "$NO_VERIFY" = "true" ]; then
+  echo "⚠️ Bypassing pre-commit hooks with NO_VERIFY=true"
+  exit 0
+fi
+
+echo "🔍 Running lint-staged..."
+npx lint-staged
+
+echo "🔎 Running TypeScript type checking..."
+cd frontend && npm run type-check && cd ..
+cd backend && npx tsc --noEmit && cd ..
+
+# Run tests if TEST_ON_COMMIT flag is true (default is false)
+if [ "$TEST_ON_COMMIT" = "true" ]; then
+  echo "🧪 Running unit tests..."
+  npm run test || { echo "⚠️ Tests failed but commit will proceed. Please fix tests before pushing."; }
+else
+  echo "⚠️ Skipping tests. Set TEST_ON_COMMIT=true to run tests on commit."
+fi
+
+echo "✅ Pre-commit checks passed! Proceeding with commit..." 

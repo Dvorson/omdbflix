@@ -16,18 +16,21 @@ A modern, responsive web application for discovering movies, TV shows, and more.
 ## Tech Stack
 
 ### Frontend
+
 - **Next.js** with TypeScript
 - **Tailwind CSS** for styling
 - **React Testing Library** for component testing
 - **Playwright** for end-to-end testing
 
 ### Backend
+
 - **Node.js** API server
 - **Express** for routing
 - **Redis** for caching API responses
 - **Winston** for logging
 
 ### DevOps
+
 - **Docker** for containerization
 - **Kubernetes** for orchestration
 - **GitHub Actions** for CI/CD
@@ -43,12 +46,14 @@ A modern, responsive web application for discovering movies, TV shows, and more.
 ### Installation
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/yourusername/ziggo-movie-app.git
    cd ziggo-movie-app
    ```
 
 2. Install dependencies:
+
    ```bash
    # Install frontend dependencies
    cd frontend
@@ -60,6 +65,7 @@ A modern, responsive web application for discovering movies, TV shows, and more.
    ```
 
 3. Set up environment variables:
+
    ```bash
    # Create .env files from examples
    cp frontend/.env.example frontend/.env.local
@@ -73,12 +79,14 @@ A modern, responsive web application for discovering movies, TV shows, and more.
 #### Development mode
 
 1. Start the backend:
+
    ```bash
    cd backend
    npm run dev
    ```
 
 2. In a separate terminal, start the frontend:
+
    ```bash
    cd frontend
    npm run dev
@@ -89,6 +97,7 @@ A modern, responsive web application for discovering movies, TV shows, and more.
 #### Production mode
 
 1. Build both applications:
+
    ```bash
    cd frontend
    npm run build
@@ -98,6 +107,7 @@ A modern, responsive web application for discovering movies, TV shows, and more.
    ```
 
 2. Start the applications:
+
    ```bash
    cd backend
    npm start
@@ -120,11 +130,13 @@ This will start the frontend, backend, and Redis services. Access the applicatio
 ## Running with Kubernetes Locally
 
 1. Start Minikube:
+
    ```bash
    minikube start
    ```
 
 2. Deploy the application:
+
    ```bash
    # From the project root
    ./scripts/k8s-local-setup.sh
@@ -163,11 +175,56 @@ npm run test:coverage
 npm run e2e
 ```
 
+## Git Hooks with Husky
+
+This project uses [Husky](https://typicode.github.io/husky/) to enforce code quality through git hooks. The following hooks are configured:
+
+### Pre-commit Hook
+
+The pre-commit hook runs automatically before each commit and performs the following checks:
+
+1. **Linting**: Runs ESLint on staged JS/TS files and Prettier on JSON/MD files
+2. **Type Checking**: Verifies TypeScript types in both frontend and backend
+
+By default, tests are **not** run during commits to keep the process fast.
+
+#### Usage Options
+
+- **Normal commit**: `git commit -m "your message"`
+  - Runs linting and type checking only
+- **Commit with tests**: `TEST_ON_COMMIT=true git commit -m "your message"`
+  - Runs linting, type checking, and unit tests
+  - Commits will proceed even if tests fail (warnings are shown)
+- **Bypass all checks**: `NO_VERIFY=true git commit -m "your message"`
+  - Skips all pre-commit checks (use with caution!)
+
+### E2E Tests
+
+E2E tests run only when specifically requested by adding the `[e2e]` flag to your commit message:
+
+```
+git commit -m "[e2e] Added new feature with E2E tests"
+```
+
+If E2E tests fail, the commit will be blocked. You can bypass this with:
+
+```
+NO_VERIFY=true git commit -m "[e2e] Your message"
+```
+
+### Best Practices
+
+1. Fix failing tests before pushing to the remote repository
+2. Use `NO_VERIFY=true` only in exceptional cases
+3. Run the full test suite locally before submitting PRs
+4. Include E2E tests for critical user flows and major features
+
 ## CI/CD Pipeline
 
 The project uses GitHub Actions for continuous integration and deployment:
 
 1. On pull requests:
+
    - Runs linting and unit tests
    - Verifies build process
 
@@ -181,6 +238,7 @@ The project uses GitHub Actions for continuous integration and deployment:
 The application is set up for deployment using Vercel (frontend) and Railway (backend):
 
 1. Configure deployment credentials as GitHub secrets:
+
    - For Vercel (frontend): `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`
    - For Railway (backend): `RAILWAY_TOKEN`
    - API keys: `OMDB_API_KEY`
@@ -222,20 +280,20 @@ While this application serves as a functional demonstration, several considerati
 
 **Scalability:**
 
-*   **Load Balancing:** Deploying multiple instances of both the frontend (Next.js server) and backend (Node.js API) behind load balancers would distribute traffic and improve availability.
-*   **Backend Service Scaling:** The backend Node.js API could be scaled horizontally (more instances). If specific endpoints become bottlenecks (e.g., search), those could potentially be extracted into separate microservices with independent scaling.
-*   **Database:** If user data (authentication, persistent favorites) were added, choosing a scalable database (e.g., PostgreSQL with read replicas, MongoDB) and optimizing queries would be crucial.
-*   **Caching:** Implementing a distributed cache like Redis (as suggested in bonus points) instead of the current in-memory cache would significantly improve performance under load and allow cache sharing between multiple backend instances.
-*   **CDN:** Using a Content Delivery Network (CDN) for static frontend assets (JS, CSS, images served by Next.js) would reduce load on the origin server and speed up delivery to users globally.
+- **Load Balancing:** Deploying multiple instances of both the frontend (Next.js server) and backend (Node.js API) behind load balancers would distribute traffic and improve availability.
+- **Backend Service Scaling:** The backend Node.js API could be scaled horizontally (more instances). If specific endpoints become bottlenecks (e.g., search), those could potentially be extracted into separate microservices with independent scaling.
+- **Database:** If user data (authentication, persistent favorites) were added, choosing a scalable database (e.g., PostgreSQL with read replicas, MongoDB) and optimizing queries would be crucial.
+- **Caching:** Implementing a distributed cache like Redis (as suggested in bonus points) instead of the current in-memory cache would significantly improve performance under load and allow cache sharing between multiple backend instances.
+- **CDN:** Using a Content Delivery Network (CDN) for static frontend assets (JS, CSS, images served by Next.js) would reduce load on the origin server and speed up delivery to users globally.
 
 **Maintainability:**
 
-*   **Code Conventions & Linting:** Strictly enforcing code style (ESLint, Prettier) ensures consistency across the codebase, making it easier for developers to read and understand.
-*   **Testing:** Expanding test coverage, particularly integration tests between frontend and backend services, and potentially adding more E2E flows, would catch regressions earlier.
-*   **Documentation:** Maintaining comprehensive documentation (README, code comments, potentially API documentation using Swagger/OpenAPI for the backend) is vital for onboarding new developers and understanding system behavior.
-*   **Dependency Management:** Regularly updating dependencies and using tools like `npm audit` or Dependabot helps mitigate security vulnerabilities and keeps the tech stack current.
-*   **Monitoring & Logging:** Implementing robust logging (already started with Winston) and integrating monitoring/alerting tools (e.g., Datadog, Sentry, Prometheus/Grafana) would be essential for tracking application health, performance, and errors in production.
-*   **Configuration Management:** Centralizing configuration (beyond basic `.env`) using appropriate tools or services improves consistency.
+- **Code Conventions & Linting:** Strictly enforcing code style (ESLint, Prettier) ensures consistency across the codebase, making it easier for developers to read and understand.
+- **Testing:** Expanding test coverage, particularly integration tests between frontend and backend services, and potentially adding more E2E flows, would catch regressions earlier.
+- **Documentation:** Maintaining comprehensive documentation (README, code comments, potentially API documentation using Swagger/OpenAPI for the backend) is vital for onboarding new developers and understanding system behavior.
+- **Dependency Management:** Regularly updating dependencies and using tools like `npm audit` or Dependabot helps mitigate security vulnerabilities and keeps the tech stack current.
+- **Monitoring & Logging:** Implementing robust logging (already started with Winston) and integrating monitoring/alerting tools (e.g., Datadog, Sentry, Prometheus/Grafana) would be essential for tracking application health, performance, and errors in production.
+- **Configuration Management:** Centralizing configuration (beyond basic `.env`) using appropriate tools or services improves consistency.
 
 ## Contributing
 
@@ -247,4 +305,4 @@ While this application serves as a functional demonstration, several considerati
 
 ## License
 
-Distributed under the MIT License. See `LICENSE` for more information. 
+Distributed under the MIT License. See `LICENSE` for more information.

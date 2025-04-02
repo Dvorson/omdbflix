@@ -1,0 +1,19 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Check if the NO_VERIFY flag is set
+if [ "$NO_VERIFY" = "true" ]; then
+  echo "⚠️ Bypassing commit-msg hooks with NO_VERIFY=true"
+  exit 0
+fi
+
+# Check if commit message contains [e2e] flag
+if grep -q "\[e2e\]" "$1"; then
+  echo "🎭 [e2e] flag detected, running E2E tests..."
+  npm run e2e || { 
+    echo "❌ E2E tests failed!"
+    echo "To bypass E2E tests and force commit, run: NO_VERIFY=true git commit ..."
+    exit 1
+  }
+  echo "✅ E2E tests passed!"
+fi 
