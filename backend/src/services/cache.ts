@@ -6,8 +6,8 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6380';
 const REDIS_ENABLED = process.env.REDIS_ENABLED !== 'false';
 const CACHE_TTL = parseInt(process.env.CACHE_TTL || '3600', 10); // Default: 1 hour
 
-// Create Redis client
-let redisClient: Redis | null = null;
+// Create Redis client with any type to avoid complex typing issues
+let redisClient: any = null;
 
 /**
  * Initialize Redis client
@@ -20,11 +20,12 @@ export function initializeCache(): void {
   }
   
   try {
+    // Create Redis client with 'new' keyword
     redisClient = new Redis(REDIS_URL, {
       enableOfflineQueue: false,
       connectTimeout: 5000,
       maxRetriesPerRequest: 1,
-      retryStrategy(times) {
+      retryStrategy(times: number) {
         // Only retry once, then give up
         if (times > 1) {
           logger.warn(`Redis connection failed after ${times} attempts, giving up`);
@@ -38,7 +39,7 @@ export function initializeCache(): void {
       logger.info('Redis client connected');
     });
 
-    redisClient.on('error', (err) => {
+    redisClient.on('error', (err: Error) => {
       logger.error('Redis client error:', err);
     });
     

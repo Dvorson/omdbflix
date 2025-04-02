@@ -26,8 +26,8 @@
     // "moduleDetection": "auto",                        /* Control what method is used to detect module-format JS files. */
 
     /* Modules */
-    "module": "node16",
-    "moduleResolution": "node16",
+    "module": "CommonJS",
+    "moduleResolution": "node",
     "rootDir": "src",
     // "rootDirs": ["./src", "./__tests__"],
     // "typeRoots": [],                                  /* Specify multiple folders that act like './node_modules/@types'. */

@@ -13,7 +13,7 @@ const Pagination: React.FC<PaginationProps> = ({
   onPageChange,
   loading,
 }) => {
-  const resultsPerPage = 10; // OMDB API returns 10 results per page
+  const resultsPerPage = 10;
   const totalPages = Math.ceil(totalResults / resultsPerPage);
 
   if (totalPages <= 1) {

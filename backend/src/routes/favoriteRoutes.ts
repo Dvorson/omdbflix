@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import passport from 'passport';
-import { getDb } from '../utils/db.js';
-import { logger } from '../utils/logger.js';
+import { getDb } from '../utils/db';
+import { logger } from '../utils/logger';
 
 const router = Router();
 

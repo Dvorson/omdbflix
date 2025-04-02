@@ -1,5 +1,5 @@
-import { searchMediaController } from '../controllers/mediaController.js';
-import * as mediaService from '../services/mediaService.js';
+import { searchMediaController } from '../controllers/mediaController';
+import * as mediaService from '../services/mediaService';
 import { Request, Response } from 'express';
 import { OmdbSearchResult } from '@repo/types';
 

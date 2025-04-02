@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { getDb } from '../utils/db.js';
-import { logger } from '../utils/logger.js';
+import { getDb } from '../utils/db';
+import { logger } from '../utils/logger';
 
 // Interface for User data (adjust fields as needed)
 export interface UserData {
@@ -62,7 +62,7 @@ export class User {
     const db = getDb();
     const sql = 'SELECT id, email, name, created_at AS createdAt, updated_at AS updatedAt FROM users WHERE id = ?';
     try {
-      const row = db.prepare(sql).get(id) as UserData | undefined;
+      const row = db.prepare(sql).get(id) as unknown as UserData | undefined;
       return row || null;
     } catch (error) {
       logger.error('Error finding user by ID:', error);
@@ -75,7 +75,7 @@ export class User {
     // Use correct column names with AS for aliasing
     const sql = 'SELECT id, email, password, name, created_at AS createdAt, updated_at AS updatedAt FROM users WHERE email = ?';
     try {
-      const row = db.prepare(sql).get(email) as UserData | undefined;
+      const row = db.prepare(sql).get(email) as unknown as UserData | undefined;
       return row || null;
     } catch (error) {
       logger.error('Error finding user by email:', error);

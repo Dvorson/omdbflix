@@ -1,11 +1,10 @@
 import path from 'path';
 import Database from 'better-sqlite3';
-import type { Database as DatabaseType } from 'better-sqlite3';
-import { logger } from './logger.js';
+import { logger } from './logger';
 import fs from 'fs';
 
 const dbPath = path.resolve(__dirname, '../../data/movie_explorer.db');
-let db: DatabaseType | null = null;
+let db: Database | null = null;
 
 export function initDatabase() {
   try {
@@ -23,7 +22,7 @@ export function initDatabase() {
   }
 }
 
-export function getDb(): DatabaseType {
+export function getDb(): Database {
   if (!db) {
     throw new Error('Database not initialized.');
   }

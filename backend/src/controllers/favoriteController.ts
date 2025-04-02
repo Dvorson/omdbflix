@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import { logger } from '../utils/logger.js';
-import { getDb } from '../utils/db.js';
+import { logger } from '../utils/logger';
+import { getDb } from '../utils/db';
 
 // Define proper error type
 interface SQLiteError extends Error {

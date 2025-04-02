@@ -1,9 +1,9 @@
 import passport from 'passport';
 import { Strategy as LocalStrategy, VerifyFunction as LocalVerifyFunction } from 'passport-local';
 import { Strategy as JwtStrategy, ExtractJwt, StrategyOptions as JwtStrategyOptions } from 'passport-jwt';
-import { User } from '../models/User.js';
-import { config } from '../utils/config.js';
-import { logger } from '../utils/logger.js';
+import { User } from '../models/User';
+import { config } from '../utils/config';
+import { logger } from '../utils/logger';
 
 // Type for JWT payload
 interface JwtPayload {

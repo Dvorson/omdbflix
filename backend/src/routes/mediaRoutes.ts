@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
-import { searchMediaController, getMediaByIdController } from '../controllers/mediaController.js';
-import { validateSearchParams, validateIdParam } from '../middleware/validation.js';
-import { logger } from '../utils/logger.js';
+import { searchMediaController, getMediaByIdController } from '../controllers/mediaController';
+import { validateSearchParams, validateIdParam } from '../middleware/validation';
+import { logger } from '../utils/logger';
 import { ApiError } from '@repo/types';
 
 const router = Router();

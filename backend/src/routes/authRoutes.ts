@@ -2,9 +2,9 @@ import { Router, Request, Response } from 'express';
 import passport from 'passport';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { config } from '../utils/config.js';
-import { getDb } from '../utils/db.js';
-import { logger } from '../utils/logger.js';
+import { config } from '../utils/config';
+import { getDb } from '../utils/db';
+import { logger } from '../utils/logger';
 import { AuthUser, ApiError, AuthInfo } from '@repo/types';
 
 const router = Router();
@@ -58,7 +58,7 @@ router.post('/register', async (req: Request, res: Response) => {
     logger.info(`User registered successfully: ${email} (ID: ${result.lastInsertRowid})`);
 
     // Generate JWT token and send response
-    generateAndSendToken(newUser as AuthUser, res);
+    generateAndSendToken(newUser as unknown as AuthUser, res);
   } catch (error) {
     const err = error as ApiError;
     logger.error('Registration error:', err);

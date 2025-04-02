@@ -12,7 +12,6 @@ export function memoizeComponent<P extends object>(
 ): React.MemoExoticComponent<ComponentType<P>> {
   const MemoizedComponent = memo(Component, propsAreEqual);
   
-  // Preserve the original display name for debugging
   MemoizedComponent.displayName = `Memo(${Component.displayName || Component.name || 'Component'})`;
   
   return MemoizedComponent;
@@ -57,7 +56,6 @@ export function createArrayPropsComparator<P extends object>(
   arrayPropNames: (keyof P)[]
 ): (prevProps: Readonly<P>, nextProps: Readonly<P>) => boolean {
   return (prevProps: Readonly<P>, nextProps: Readonly<P>) => {
-    // Compare non-array props with standard equality
     const allPropNames = Object.keys(prevProps) as (keyof P)[];
     
     for (const propName of allPropNames) {
@@ -68,7 +66,6 @@ export function createArrayPropsComparator<P extends object>(
       }
     }
     
-    // Deep compare array props
     for (const arrayProp of arrayPropNames) {
       const prevArray = prevProps[arrayProp] as unknown as unknown[];
       const nextArray = nextProps[arrayProp] as unknown as unknown[];
@@ -76,7 +73,6 @@ export function createArrayPropsComparator<P extends object>(
       if (!prevArray || !nextArray) return false;
       if (prevArray.length !== nextArray.length) return false;
       
-      // Check if arrays contain the same elements (identity comparison)
       for (let i = 0; i < prevArray.length; i++) {
         if (prevArray[i] !== nextArray[i]) return false;
       }
