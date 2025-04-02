@@ -1,0 +1,15 @@
+# k8s/base/frontend-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  labels:
+    app: frontend
+spec:
+  # Default to ClusterIP, overlay can change to NodePort/LoadBalancer
+  type: ClusterIP 
+  ports:
+  - port: 80 # Standard HTTP port
+    targetPort: 3000 # Port the container listens on
+  selector:
+    app: frontend # Selects pods with this label 

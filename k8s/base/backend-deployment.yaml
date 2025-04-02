@@ -1,0 +1,42 @@
+# k8s/base/backend-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+  namespace: movie-explorer
+  labels:
+    app: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: backend
+        # Use a simpler image name for local development compatibility
+        image: movie-explorer-api:latest
+        # Add imagePullPolicy for local Minikube development
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5001
+        envFrom:
+        - secretRef:
+            name: omdb-api-key-secret
+        # Add readiness/liveness probes pointing to a health check endpoint
+        # readinessProbe:
+        #   httpGet:
+        #     path: /healthz # Adjust path as needed
+        #     port: 5001
+        #   initialDelaySeconds: 10
+        #   periodSeconds: 5
+        # livenessProbe:
+        #   httpGet:
+        #     path: /healthz # Adjust path as needed
+        #     port: 5001
+        #   initialDelaySeconds: 15
+        #   periodSeconds: 20 

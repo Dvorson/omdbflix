@@ -1,0 +1,56 @@
+# k8s/base/frontend-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-deployment
+  namespace: movie-explorer
+  labels:
+    app: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+      - name: frontend
+        # Use a simpler image name for local development compatibility
+        image: movie-explorer-frontend:latest
+        # Add imagePullPolicy for local Minikube development
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 3000
+        # Add readiness and liveness probes if your frontend supports them
+        # readinessProbe:
+        #   httpGet:
+        #     path: /
+        #     port: 3000
+        #   initialDelaySeconds: 5
+        #   periodSeconds: 10
+        # livenessProbe:
+        #   httpGet:
+        #     path: /
+        #     port: 3000
+        #   initialDelaySeconds: 15
+        #   periodSeconds: 20
+        env:
+        - name: PORT
+          value: "3000"
+        - name: NODE_ENV
+          value: "production"
+        - name: HOSTNAME
+          value: "0.0.0.0"
+        # Point to the backend K8s service
+        - name: NEXT_PUBLIC_BACKEND_API_URL
+          value: "http://backend-service:5000/api"
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+          requests:
+            cpu: "200m"
+            memory: "256Mi" 

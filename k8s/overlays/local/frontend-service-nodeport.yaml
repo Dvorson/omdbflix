@@ -1,0 +1,11 @@
+# k8s/overlays/local/frontend-service-nodeport.yaml
+# Using JSON Patch format
+- op: replace
+  path: /spec/type
+  value: NodePort
+- op: replace
+  path: /spec/ports
+  value:
+    - port: 80
+      targetPort: 3000
+      nodePort: 30007 

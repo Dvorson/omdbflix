@@ -1,0 +1,17 @@
+# k8s/base/kustomization.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: movie-explorer # Define a namespace
+
+resources:
+  - namespace.yaml
+  - secrets.yaml
+  - backend-deployment.yaml
+  - backend-service.yaml
+  - frontend-deployment.yaml
+  - frontend-service.yaml
+
+# Common labels to add to all resources
+commonLabels:
+  app.kubernetes.io/name: movie-explorer 

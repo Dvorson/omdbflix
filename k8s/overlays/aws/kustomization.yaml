@@ -1,0 +1,27 @@
+# k8s/overlays/aws/kustomization.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Inherit from the base
+resources:
+  - ../../base
+
+# Patch image tags (assuming CI sets IMAGE_TAG env var)
+images:
+  - name: your-dockerhub-username/movie-explorer-api
+    newTag: ${IMAGE_TAG:-latest} # Use env var or default to latest
+  - name: your-dockerhub-username/movie-explorer-frontend
+    newTag: ${IMAGE_TAG:-latest} # Use env var or default to latest
+
+# Patch the frontend service type to LoadBalancer for AWS
+patches:
+  - target:
+      kind: Service
+      name: frontend-service
+    patch: |-
+      spec:
+        type: LoadBalancer
+        # Remove nodePort if base had it
+        ports:
+          - port: 80
+            targetPort: 3000 

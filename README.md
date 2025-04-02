@@ -117,9 +117,7 @@ docker-compose up -d
 
 This will start the frontend, backend, and Redis services. Access the application at [http://localhost:3000](http://localhost:3000).
 
-## Kubernetes Deployment
-
-### Local Kubernetes Development
+## Running with Kubernetes Locally
 
 1. Start Minikube:
    ```bash
@@ -132,43 +130,7 @@ This will start the frontend, backend, and Redis services. Access the applicatio
    ./scripts/k8s-local-setup.sh
    ```
 
-3. Access the application at the URL provided by the script (typically `http://<minikube-ip>:30000`)
-
-### AWS Kubernetes Deployment
-
-The application is configured to deploy to a Kubernetes cluster on AWS using GitHub Actions:
-
-1. Required GitHub Secrets:
-   - `AWS_ACCESS_KEY_ID`: AWS access key with ECR/EKS permissions
-   - `AWS_SECRET_ACCESS_KEY`: Corresponding AWS secret key
-   - `AWS_ACCOUNT_ID`: Your AWS account ID
-   - `KUBE_CONFIG_DATA`: Base64-encoded Kubernetes config file
-   - `REDIS_URL`: Redis connection URL for production
-   - `OMDB_API_KEY`: Your OMDB API key
-
-2. Kubernetes Manifests:
-   - Located in `k8s/aws/` directory
-   - Include deployment, service, secrets, and namespace configurations
-
-3. Deployment Process:
-   - Triggered by pushes to the main branch
-   - Builds Docker image and pushes to ECR
-   - Applies Kubernetes manifests to your EKS cluster
-
-## Project Structure
-
-```
-ziggo-movie-app/
-├── frontend/          # Next.js application
-├── backend/           # Node.js API server
-├── k8s/               # Kubernetes manifests
-│   ├── local/         # Local development manifests
-│   └── aws/           # AWS production manifests
-├── scripts/           # Helper scripts
-├── e2e/               # End-to-end tests
-├── Dockerfile         # Main application Dockerfile
-└── docker-compose.yml # Local development with Docker
-```
+3. Access the application at the URL provided by the script
 
 ## Testing
 
@@ -211,8 +173,22 @@ The project uses GitHub Actions for continuous integration and deployment:
 
 2. On merge to main:
    - Runs all tests including e2e
-   - Builds Docker image
-   - Deploys to Kubernetes cluster on AWS
+   - Builds Docker images
+   - Deploys to AWS ECS
+
+## Deployment
+
+### AWS Deployment
+
+The application is set up for deployment to AWS ECS (Elastic Container Service):
+
+1. Configure AWS credentials as GitHub secrets:
+   - `AWS_ACCESS_KEY_ID`
+   - `AWS_SECRET_ACCESS_KEY`
+
+2. Update AWS resource names in `.github/workflows/deploy.yml` if needed
+
+3. Push to the main branch to trigger deployment
 
 ## Architecture Decisions
 
@@ -242,6 +218,27 @@ The project uses GitHub Actions for continuous integration and deployment:
 - **Local Storage for Favorites**: Used localStorage for simplicity. In a production environment, we would implement user authentication and store favorites in a database.
 - **Environment Setup**: Development environment uses local Redis. Production would use managed Redis service.
 - **API Caching Strategy**: Implemented different TTLs for search (10 min) vs details (24 hours) based on data volatility.
+
+## Scalability and Maintainability
+
+While this application serves as a functional demonstration, several considerations would be important for a production environment:
+
+**Scalability:**
+
+*   **Load Balancing:** Deploying multiple instances of both the frontend (Next.js server) and backend (Node.js API) behind load balancers (e.g., AWS ELB, Nginx) would distribute traffic and improve availability.
+*   **Backend Service Scaling:** The backend Node.js API could be scaled horizontally (more instances). If specific endpoints become bottlenecks (e.g., search), those could potentially be extracted into separate microservices with independent scaling.
+*   **Database:** If user data (authentication, persistent favorites) were added, choosing a scalable database (e.g., PostgreSQL with read replicas, DynamoDB) and optimizing queries would be crucial.
+*   **Caching:** Implementing a distributed cache like Redis (as suggested in bonus points) instead of the current in-memory cache would significantly improve performance under load and allow cache sharing between multiple backend instances.
+*   **CDN:** Using a Content Delivery Network (CDN) for static frontend assets (JS, CSS, images served by Next.js) would reduce load on the origin server and speed up delivery to users globally.
+
+**Maintainability:**
+
+*   **Code Conventions & Linting:** Strictly enforcing code style (ESLint, Prettier) ensures consistency across the codebase, making it easier for developers to read and understand.
+*   **Testing:** Expanding test coverage, particularly integration tests between frontend and backend services, and potentially adding more E2E flows, would catch regressions earlier.
+*   **Documentation:** Maintaining comprehensive documentation (README, code comments, potentially API documentation using Swagger/OpenAPI for the backend) is vital for onboarding new developers and understanding system behavior.
+*   **Dependency Management:** Regularly updating dependencies and using tools like `npm audit` or Dependabot helps mitigate security vulnerabilities and keeps the tech stack current.
+*   **Monitoring & Logging:** Implementing robust logging (already started with Winston) and integrating monitoring/alerting tools (e.g., Datadog, Sentry, Prometheus/Grafana) would be essential for tracking application health, performance, and errors in production.
+*   **Configuration Management:** Centralizing configuration (beyond basic `.env`) using tools or services appropriate for the deployment environment (e.g., AWS Parameter Store, ConfigMaps in K8s) improves consistency.
 
 ## Contributing
 

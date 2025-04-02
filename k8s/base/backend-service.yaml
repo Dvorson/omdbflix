@@ -1,0 +1,15 @@
+# k8s/base/backend-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service # Service name used by frontend
+  labels:
+    app: backend-api
+spec:
+  # Use ClusterIP for internal communication
+  type: ClusterIP 
+  ports:
+  - port: 5000 # Port the service listens on
+    targetPort: 5000 # Port the container listens on
+  selector:
+    app: backend-api # Selects pods with this label 
