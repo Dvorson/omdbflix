@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
-import { UserModel } from '../models/User';
+import { User } from '../models/User';
 import { logger } from '../utils/logger';
+import { getDb } from '../utils/db';
 
 // Get user favorites
 export const getFavorites = async (req: Request, res: Response): Promise<void> => {
@@ -14,16 +15,7 @@ export const getFavorites = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    const user = UserModel.findById(Number(userId));
-    if (!user) {
-      res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-      return;
-    }
-    
-    const favorites = UserModel.getFavorites(user.id);
+    const favorites = await fetchFavoritesFromDb(userId);
     
     res.json({
       success: true,
@@ -60,27 +52,8 @@ export const addFavorite = async (req: Request, res: Response): Promise<void> =>
       return;
     }
     
-    const user = UserModel.findById(Number(userId));
-    if (!user) {
-      res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-      return;
-    }
+    const success = await addFavoriteToDb(userId, movieId);
     
-    // Get current favorites to check if movie already in favorites
-    const currentFavorites = UserModel.getFavorites(user.id);
-    if (currentFavorites.includes(movieId)) {
-      res.status(400).json({
-        success: false,
-        message: 'Movie already in favorites'
-      });
-      return;
-    }
-    
-    // Add to favorites
-    const success = UserModel.addFavorite(user.id, movieId);
     if (!success) {
       res.status(500).json({
         success: false,
@@ -89,13 +62,9 @@ export const addFavorite = async (req: Request, res: Response): Promise<void> =>
       return;
     }
     
-    // Get updated favorites list
-    const favorites = UserModel.getFavorites(user.id);
-    
     res.json({
       success: true,
-      message: 'Movie added to favorites',
-      favorites
+      message: 'Movie added to favorites'
     });
   } catch (error) {
     logger.error('Error adding favorite:', error);
@@ -128,32 +97,19 @@ export const removeFavorite = async (req: Request, res: Response): Promise<void>
       return;
     }
     
-    const user = UserModel.findById(Number(userId));
-    if (!user) {
-      res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-      return;
-    }
+    const success = await removeFavoriteFromDb(userId, movieId);
     
-    // Remove from favorites
-    const success = UserModel.removeFavorite(user.id, movieId);
     if (!success) {
-      res.status(400).json({
+      res.status(404).json({
         success: false,
         message: 'Movie not in favorites or could not be removed'
       });
       return;
     }
     
-    // Get updated favorites list
-    const favorites = UserModel.getFavorites(user.id);
-    
     res.json({
       success: true,
-      message: 'Movie removed from favorites',
-      favorites
+      message: 'Movie removed from favorites'
     });
   } catch (error) {
     logger.error('Error removing favorite:', error);
@@ -162,4 +118,43 @@ export const removeFavorite = async (req: Request, res: Response): Promise<void>
       message: 'Server error while removing favorite'
     });
   }
-}; 
+};
+
+// --- Placeholder DB functions (These should interact with getDb() from utils/db.ts) ---
+async function fetchFavoritesFromDb(userId: number): Promise<string[]> {
+    const db = getDb();
+    const rows = db.prepare('SELECT movie_id FROM favorites WHERE user_id = ?').all(userId) as { movie_id: string }[];
+    return rows.map(r => r.movie_id);
+}
+
+async function addFavoriteToDb(userId: number, movieId: string): Promise<boolean> {
+    const db = getDb();
+    try {
+        const sql = 'INSERT INTO favorites (user_id, movie_id) VALUES (?, ?)';
+        db.prepare(sql).run(userId, movieId);
+        return true;
+    } catch (error: any) {
+        // Handle potential UNIQUE constraint violation (already favorited)
+        if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+            logger.warn(`Attempted to add duplicate favorite ${movieId} for user ${userId}`);
+            // Depending on desired behavior, could return true (idempotent) or false/throw
+            return true; // Treat as success if already exists
+        }
+        logger.error(`DB error adding favorite ${movieId} for user ${userId}:`, error);
+        return false;
+    }
+}
+
+async function removeFavoriteFromDb(userId: number, movieId: string): Promise<boolean> {
+    const db = getDb();
+    try {
+        const sql = 'DELETE FROM favorites WHERE user_id = ? AND movie_id = ?';
+        const result = db.prepare(sql).run(userId, movieId);
+        return result.changes > 0;
+    } catch (error) {
+        logger.error(`DB error removing favorite ${movieId} for user ${userId}:`, error);
+        return false;
+    }
+}
+
+// --- End Placeholder DB functions --- 
