@@ -1,23 +1,24 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useAuth } from '../contexts/AuthContext'; // Import useAuth hook
 
 type AuthMode = 'login' | 'register';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLogin: (email: string, password: string) => Promise<void>;
-  onRegister: (name: string, email: string, password: string) => Promise<void>;
+  // onLogin and onRegister props are no longer needed as we use the context
 }
 
-const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, onRegister }) => {
+const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
+  const { login, register, isLoading: authLoading } = useAuth(); // Get functions from context
   const [mode, setMode] = useState<AuthMode>('login');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  // Removed local loading state, use authLoading from context
   const [visible, setVisible] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
   const initialFocusRef = useRef<HTMLInputElement>(null);
@@ -26,6 +27,12 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, onRegis
   useEffect(() => {
     if (isOpen) {
       setVisible(true);
+      // Reset fields and error when opening
+      setError(null);
+      setName('');
+      setEmail('');
+      setPassword('');
+      setMode('login'); // Default to login mode
       // Focus the first input when modal opens
       setTimeout(() => {
         initialFocusRef.current?.focus();
@@ -66,34 +73,39 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, onRegis
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setLoading(true);
+    // setLoading(true); // Context now handles loading state
 
     try {
       if (mode === 'login') {
-        await onLogin(email, password);
+        await login({ email, password }); // Use login from context
       } else {
         if (!name.trim()) {
-          throw new Error('Name is required');
+          setError('Name is required'); // Set error directly
+          return; // Stop submission
         }
-        await onRegister(name, email, password);
+        await register({ name, email, password }); // Use register from context
       }
       
-      // Reset form
-      setName('');
-      setEmail('');
-      setPassword('');
-      onClose();
+      // Reset form state not needed here as useEffect on isOpen handles it
+      onClose(); // Close modal on success
     } catch (err: unknown) {
-      const error = err as { message?: string };
-      setError(error.message || 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
+      const error = err as { message?: string; response?: { data?: { message?: string } } };
+      // Try to get error message from backend response, fallback to general message
+      const backendMessage = error.response?.data?.message;
+      setError(backendMessage || error.message || 'An error occurred');
+    } 
+    // finally {
+    //   setLoading(false); // Context handles loading state
+    // }
   };
 
   const toggleMode = () => {
     setMode(mode === 'login' ? 'register' : 'login');
     setError(null);
+    // Optionally reset fields when toggling
+    // setName('');
+    // setEmail('');
+    // setPassword('');
   };
 
   if (!isOpen && !visible) return null;
@@ -109,7 +121,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, onRegis
       <div className="flex min-h-screen items-center justify-center px-4 text-center">
         {/* Backdrop */}
         <div 
-          className={`fixed inset-0 bg-black/50 ${isOpen ? 'opacity-100' : 'opacity-0'}`} 
+          className={`fixed inset-0 bg-black/50 ${isOpen ? 'opacity-100' : 'opacity-0'}`}
           style={{ transition: 'opacity 200ms ease-in-out' }}
           onClick={onClose}
           aria-hidden="true"
@@ -144,7 +156,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, onRegis
                   onChange={(e) => setName(e.target.value)}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                   placeholder="Your name"
-                  required
+                  required={mode === 'register'} // Only required in register mode
                 />
               </div>
             )}
@@ -155,7 +167,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, onRegis
               </label>
               <input
                 id="email"
-                ref={initialFocusRef}
+                ref={initialFocusRef} // Keep focus ref on email
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -186,16 +198,17 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, onRegis
                 type="button"
                 className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                 onClick={toggleMode}
+                disabled={authLoading} // Disable toggle if auth is processing
               >
                 {mode === 'login' ? 'Need an account? Sign up' : 'Already have an account? Sign in'}
               </button>
               
               <button
                 type="submit"
-                disabled={loading}
+                disabled={authLoading} // Use authLoading from context
                 className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 dark:bg-blue-700 dark:hover:bg-blue-600"
               >
-                {loading ? 'Processing...' : mode === 'login' ? 'Sign In' : 'Create Account'}
+                {authLoading ? 'Processing...' : mode === 'login' ? 'Sign In' : 'Create Account'}
               </button>
             </div>
           </form>

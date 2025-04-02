@@ -2,23 +2,13 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import ThemeToggle from './ThemeToggle';
 import { useAuth } from '../contexts/AuthContext';
 import AuthModal from './AuthModal';
 
 const Header: React.FC = () => {
-  const router = useRouter();
-  const { user, isAuthenticated, logout, login, register } = useAuth();
+  const { user, isAuthenticated, logout, isLoading } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
-  
-  const handleLogin = async (email: string, password: string) => {
-    await login(email, password);
-  };
-  
-  const handleRegister = async (name: string, email: string, password: string) => {
-    await register(name, email, password);
-  };
   
   return (
     <header className="bg-white shadow dark:bg-gray-800">
@@ -28,24 +18,26 @@ const Header: React.FC = () => {
             Movie Explorer
           </Link>
           
-          <div className="flex sm:hidden">
+          <div className="flex items-center sm:hidden">
             <ThemeToggle />
-            {isAuthenticated ? (
-              <div className="relative ml-4">
-                <button
-                  onClick={() => router.push('/favorites')}
-                  className="text-gray-700 hover:text-blue-500 dark:text-gray-300 dark:hover:text-blue-400"
-                  aria-label="View favorites"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                  </svg>
-                </button>
-              </div>
+            
+            {isLoading ? (
+                <div className="ml-4 h-6 w-6 animate-spin rounded-full border-b-2 border-blue-500" role="status"></div>
+            ) : isAuthenticated ? (
+              <Link
+                href="/favorites"
+                className="ml-4 text-gray-700 hover:text-blue-500 dark:text-gray-300 dark:hover:text-blue-400"
+                aria-label="View favorites"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+              </Link>
             ) : (
               <button
                 onClick={() => setShowAuthModal(true)}
                 className="ml-4 text-gray-700 hover:text-blue-500 dark:text-gray-300 dark:hover:text-blue-400"
+                aria-label="Sign in or register"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -55,37 +47,41 @@ const Header: React.FC = () => {
           </div>
         </div>
         
-        <nav className="flex items-center space-x-6">
-          <Link href="/" className="hidden text-gray-600 hover:text-blue-500 dark:text-gray-300 dark:hover:text-blue-400 sm:inline-block">
+        <nav className="hidden items-center space-x-6 sm:flex">
+          <Link href="/" className="text-gray-600 hover:text-blue-500 dark:text-gray-300 dark:hover:text-blue-400">
             Home
           </Link>
           
-          <Link href="/favorites" className="hidden text-gray-600 hover:text-blue-500 dark:text-gray-300 dark:hover:text-blue-400 sm:inline-block">
-            Favorites
-          </Link>
+          {isAuthenticated && (
+            <Link href="/favorites" className="text-gray-600 hover:text-blue-500 dark:text-gray-300 dark:hover:text-blue-400">
+              Favorites
+            </Link>
+          )}
           
-          <div className="hidden sm:block">
-            <ThemeToggle />
-          </div>
+          <ThemeToggle />
           
-          <div className="hidden sm:block">
-            {isAuthenticated ? (
-              <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-600 dark:text-gray-300">
-                  Hello, {user?.name}
+          <div className="flex items-center space-x-4">
+             {isLoading ? (
+                <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-blue-500" role="status"></div>
+             ) : isAuthenticated ? (
+              <>
+                <span className="text-sm text-gray-600 dark:text-gray-300" title={user?.email}>
+                  Hi, {user?.name}
                 </span>
-                
                 <button
                   onClick={logout}
-                  className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:bg-blue-700 dark:hover:bg-blue-600"
+                  disabled={isLoading}
+                  className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 dark:bg-blue-700 dark:hover:bg-blue-600"
                 >
                   Sign Out
                 </button>
-              </div>
+              </>
             ) : (
               <button
                 onClick={() => setShowAuthModal(true)}
-                className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:bg-blue-700 dark:hover:bg-blue-600"
+                disabled={isLoading}
+                className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 dark:bg-blue-700 dark:hover:bg-blue-600"
+                data-testid="sign-in-button"
               >
                 Sign In
               </button>
@@ -97,8 +93,6 @@ const Header: React.FC = () => {
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
-        onLogin={handleLogin}
-        onRegister={handleRegister}
       />
     </header>
   );

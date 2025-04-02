@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { searchMedia } from '../services/api';
+import { searchMovies } from '../services/api';
 import { MovieDetails, SearchParams, SearchResult } from '@repo/types';
 
 interface UseMediaSearchResult {
@@ -84,7 +84,24 @@ export function useMediaSearch(): UseMediaSearchResult {
     setError(null);
     
     try {
-      const result: SearchResult = await searchMedia(params);
+      const result: SearchResult = await searchMovies(params);
+      
+      // Handle "Conversion failed" SQL error specifically
+      if (result.Response === 'False' && result.Error && result.Error.includes('Conversion failed when converting the varchar value')) {
+        console.warn('Received SQL conversion error from API, trying again without year parameter');
+        
+        // If we have a year parameter, try again without it
+        if (params.year) {
+          const newParams = { ...params };
+          delete newParams.year;
+          
+          // Clear any previous year selection in the UI
+          setSearchYear('');
+          
+          // Try search again without the year
+          return handleSearch(newParams);
+        }
+      }
       
       if (result.Response === 'True') {
         // Convert Movie[] to MovieDetails[] using type assertion
@@ -104,7 +121,7 @@ export function useMediaSearch(): UseMediaSearchResult {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [setSearchYear]);
 
   return {
     results,

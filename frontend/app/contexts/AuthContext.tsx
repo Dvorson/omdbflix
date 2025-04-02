@@ -1,168 +1,149 @@
 'use client';
 
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, ReactNode, useCallback } from 'react';
 import axios from 'axios';
+import { 
+    loginUser as apiLoginUser, 
+    registerUser as apiRegisterUser, 
+    checkAuthStatus as apiCheckAuthStatus, 
+    logoutUser as apiLogoutUser,
+    setToken as apiSetToken, // Import setToken to manage the token storage
+} from '../services/api'; 
 
+// Define the shape of the user object (adjust as needed based on backend response)
 interface User {
-  id: string;
-  name: string;
+  id: number;
   email: string;
-  favorites: string[];
+  name: string;
+  // Add other relevant fields returned by the backend /auth/status or /auth/login
 }
 
-interface AuthContextType {
+// Define the shape of the context value - EXPORT this type
+export interface AuthContextType {
   user: User | null;
-  token: string | null;
   isAuthenticated: boolean;
-  loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
-  updateFavorites: (favorites: string[]) => void;
+  isLoading: boolean; // To indicate initial auth check or ongoing login/register
+  login: (credentials: { email: string; password: string }) => Promise<void>;
+  register: (userData: { email: string; password: string; name: string }) => Promise<void>;
+  logout: () => Promise<void>;
+  checkStatus: () => Promise<void>; // Function to manually re-check status if needed
+  // Removed updateFavorites - favorites are managed via direct API calls now
 }
 
+// Create the context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+// Create the provider component
+interface AuthProviderProps {
+  children: ReactNode;
+}
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true); // Start loading on initial mount
 
-  // Check for token on mount and load user data
-  useEffect(() => {
-    const loadUser = async () => {
-      const storedToken = localStorage.getItem('token');
-      
-      if (storedToken) {
-        try {
-          setToken(storedToken);
-          
-          // Set axios defaults
-          axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
-          
-          // Get user data
-          const response = await axios.get(`${API_URL}/auth/me`);
-          
-          if (response.data.success) {
-            setUser(response.data.user);
-          } else {
-            // Clear invalid token
-            localStorage.removeItem('token');
-            setToken(null);
-            delete axios.defaults.headers.common['Authorization'];
-          }
-        } catch (_) {
-          // Clear invalid token
-          localStorage.removeItem('token');
-          setToken(null);
-          delete axios.defaults.headers.common['Authorization'];
-        }
-      }
-      
-      setLoading(false);
-    };
-    
-    loadUser();
+  // Function to check authentication status using the API
+  const checkStatus = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const { isAuthenticated: authStatus, user: userData } = await apiCheckAuthStatus();
+      setIsAuthenticated(authStatus);
+      setUser(authStatus ? userData : null);
+      console.log('[AuthContext] Checked status:', { authStatus, userData });
+    } catch (error) {
+      console.error('[AuthContext] Error checking auth status:', error);
+      setIsAuthenticated(false);
+      setUser(null);
+      apiSetToken(null); // Ensure token is cleared on error during check
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  const login = async (email: string, password: string) => {
+  // Check status on initial mount
+  useEffect(() => {
+    console.log('[AuthContext] Initial mount: checking auth status...');
+    checkStatus();
+  }, [checkStatus]);
+
+  // Login function
+  const login = async (credentials: { email: string; password: string }) => {
+    setIsLoading(true);
     try {
-      const response = await axios.post(`${API_URL}/auth/login`, {
-        email,
-        password
-      });
-      
-      const { token, user } = response.data;
-      
-      // Save token to local storage
-      localStorage.setItem('token', token);
-      
-      // Set axios defaults
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      
-      // Update state
-      setToken(token);
-      setUser(user);
-    } catch (error: unknown) {
-      const errorResponse = error as { response?: { data?: { message?: string } } };
-      const message = errorResponse.response?.data?.message || 'Login failed';
-      throw new Error(message);
+      const { token, user: loggedInUser } = await apiLoginUser(credentials);
+      // apiLoginUser already calls setToken internally via api.ts
+      setUser(loggedInUser);
+      setIsAuthenticated(true);
+      console.log('[AuthContext] Login successful:', loggedInUser);
+    } catch (error) {
+      console.error('[AuthContext] Login failed:', error);
+      setUser(null);
+      setIsAuthenticated(false);
+      apiSetToken(null); // Clear token on login failure
+      throw error; // Rethrow to allow component to handle UI feedback
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const register = async (name: string, email: string, password: string) => {
+  // Register function
+  const register = async (userData: { email: string; password: string; name: string }) => {
+    setIsLoading(true);
     try {
-      const response = await axios.post(`${API_URL}/auth/register`, {
-        name,
-        email,
-        password
-      });
-      
-      const { token, user } = response.data;
-      
-      // Save token to local storage
-      localStorage.setItem('token', token);
-      
-      // Set axios defaults
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      
-      // Update state
-      setToken(token);
-      setUser(user);
-    } catch (error: unknown) {
-      const errorResponse = error as { response?: { data?: { message?: string } } };
-      const message = errorResponse.response?.data?.message || 'Registration failed';
-      throw new Error(message);
+      const { token, user: registeredUser } = await apiRegisterUser(userData);
+      // apiRegisterUser already calls setToken internally via api.ts
+      setUser(registeredUser);
+      setIsAuthenticated(true);
+      console.log('[AuthContext] Registration successful:', registeredUser);
+    } catch (error) {
+      console.error('[AuthContext] Registration failed:', error);
+      setUser(null);
+      setIsAuthenticated(false);
+      apiSetToken(null); // Clear token on registration failure
+      throw error; // Rethrow for UI handling
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const logout = () => {
-    // Remove token from local storage
-    localStorage.removeItem('token');
-    
-    // Remove axios default header
-    delete axios.defaults.headers.common['Authorization'];
-    
-    // Reset state
-    setToken(null);
-    setUser(null);
-  };
-
-  const updateFavorites = (favorites: string[]) => {
-    if (user) {
-      setUser({
-        ...user,
-        favorites
-      });
+  // Logout function
+  const logout = async () => {
+    setIsLoading(true);
+    try {
+      await apiLogoutUser(); // Calls setToken(null) internally via api.ts
+      console.log('[AuthContext] Logout successful');
+    } catch (error) {
+      console.error('[AuthContext] Logout failed:', error);
+      // Still ensure client state is cleared even if API call fails
+    } finally {
+      setUser(null);
+      setIsAuthenticated(false);
+      setIsLoading(false);
     }
   };
 
+  // Value provided by the context
   const value = {
     user,
-    token,
-    isAuthenticated: !!token,
-    loading,
+    isAuthenticated,
+    isLoading,
     login,
     register,
     logout,
-    updateFavorites
+    checkStatus, // Expose checkStatus if needed externally
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+// Custom hook to use the Auth context
+export const useAuth = (): AuthContextType => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 };
 
 export default AuthContext; 

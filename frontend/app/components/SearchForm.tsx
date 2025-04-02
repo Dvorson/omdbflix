@@ -8,6 +8,21 @@ interface SearchFormProps {
   isLoading: boolean;
 }
 
+/**
+ * Validates if a year value is valid (4-digit number between 1900 and current year + 5)
+ */
+function isValidYear(year: string): boolean {
+  if (!year) return false;
+  
+  // Must be exactly 4 digits
+  if (!/^\d{4}$/.test(year)) return false;
+  
+  // Must be in a reasonable range
+  const yearNum = parseInt(year, 10);
+  const currentYear = new Date().getFullYear();
+  return yearNum >= 1900 && yearNum <= currentYear + 5;
+}
+
 const SearchForm: React.FC<SearchFormProps> = ({ onSearch, isLoading }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [type, setType] = useState('');
@@ -22,14 +37,29 @@ const SearchForm: React.FC<SearchFormProps> = ({ onSearch, isLoading }) => {
     const params: SearchParams = { query: searchTerm.trim() };
     
     if (type) params.type = type;
-    if (year) params.year = year;
+    
+    // Extremely defensive validation of the year parameter
+    // Only pass year if it's a string that contains ONLY digits and is exactly 4 characters long
+    if (year && typeof year === 'string' && /^\d{4}$/.test(year)) {
+      // Double check by trying to convert to a number
+      const yearNum = parseInt(year, 10);
+      if (!isNaN(yearNum) && yearNum >= 1900 && yearNum <= new Date().getFullYear() + 5) {
+        params.year = year;
+      } else {
+        console.warn(`Invalid year value rejected: ${year}`);
+      }
+    } else if (year) {
+      console.warn(`Non-numeric year value rejected: ${year}`);
+    }
     
     await onSearch(params);
   };
 
   // Generate year options (current year down to 1900)
   const currentYear = new Date().getFullYear();
-  const yearOptions = Array.from({ length: currentYear - 1899 }, (_, i) => currentYear - i);
+  const yearOptions = Array.from({ length: currentYear - 1899 }, (_, i) => currentYear - i)
+    // Ensure we only include years that are numeric (protection against data corruption)
+    .filter(y => typeof y === 'number' && !isNaN(y));
 
   return (
     <div className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800 sm:p-8">
