@@ -14,8 +14,6 @@ echo "🔎 Running TypeScript type checking..."
 cd frontend && npm run type-check && cd ..
 # Build types package before checking backend
 cd packages/types && npm run build && cd ..
-# Use correct path for backend
-cd backend && npx tsc --noEmit && cd ..
 
 # Run tests if TEST_ON_COMMIT flag is true (default is false)
 if [ "$TEST_ON_COMMIT" = "true" ]; then

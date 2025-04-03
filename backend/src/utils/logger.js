@@ -1,4 +1,5 @@
 import winston from 'winston';
+import fs from 'fs';
 
 // Define log levels
 const levels = {

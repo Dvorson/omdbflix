@@ -54,7 +54,7 @@ export function initializeCache() {
 
     redisClient.on('error', (err) => {
       // Log specific errors, especially connection refused
-      if (err.code === 'ECONNREFUSED') {
+      if (err && typeof err === 'object' && 'code' in err && err.code === 'ECONNREFUSED') {
         logger.error(`Redis connection refused at ${REDIS_URL}. Ensure Redis server is running and accessible.`);
       } else {
         logger.error('Redis client error:', err);

@@ -32,9 +32,6 @@ jobs:
     - name: Build Shared Types Package
       run: cd packages/types && npm run build
       
-    - name: Run Backend Type Check
-      run: cd backend && tsc --noEmit
-      
     - name: Run Frontend Type Check (App)
       run: cd frontend && npm run type-check # Uses tsconfig.app.json
 

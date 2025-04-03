@@ -7,7 +7,7 @@ import { closeCache } from './services/cache.js';
 
 // Ensure PORT is a number and set to 5000 explicitly
 // (Note: config.port might be loaded from .env, ensure consistency)
-const PORT = parseInt(config.port, 10) || 5000;
+const PORT = parseInt(String(config.port), 10) || 5000;
 
 // Listen on all network interfaces (0.0.0.0) to be accessible inside Docker/containers
 const server = app.listen(PORT, '0.0.0.0', () => {
