@@ -68,7 +68,7 @@ const config: PlaywrightTestConfig = {
     command: 'npm run dev',
     url: 'http://localhost:3000',
     timeout: 180 * 1000, // 3 minutes to start servers
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: true, // Always reuse the existing server
     env: {
       OMDB_API_KEY: '60babe8f',
       NODE_ENV: 'test',
