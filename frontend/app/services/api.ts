@@ -9,7 +9,6 @@ const API_BASE_URL = typeof window !== 'undefined'
 
 console.log('API Base URL:', API_BASE_URL);
 
-const token: string | null = null;
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000 // 10 second timeout
