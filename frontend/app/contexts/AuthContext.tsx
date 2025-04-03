@@ -49,9 +49,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, []);
 
   useEffect(() => {
-    console.log('[AuthContext] Initial mount: checking auth status...');
-    checkStatus();
-  }, [checkStatus]);
+    let ignore = false;
+    console.log('[AuthContext] Initial mount effect running...');
+    
+    if (!ignore) {
+      console.log('[AuthContext] Calling checkStatus...');
+      checkStatus();
+    }
+
+    // Cleanup function to set the ignore flag
+    return () => {
+      console.log('[AuthContext] Initial mount effect cleanup.');
+      ignore = true;
+    };
+  }, [checkStatus]); // Keep checkStatus dependency
 
   const login = async (credentials: { email: string; password: string }) => {
     setIsLoading(true);

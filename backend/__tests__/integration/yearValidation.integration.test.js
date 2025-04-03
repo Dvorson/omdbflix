@@ -1,6 +1,6 @@
 import request from 'supertest';
-import app from '../../app';
-import { config } from '../../utils/config';
+import app from '../../src/app.js';
+import { config } from '../../src/utils/config.js';
 
 describe('Media API Year Validation Integration Test', () => {
   it('should reject search with invalid year parameter "Cuts"', async () => {

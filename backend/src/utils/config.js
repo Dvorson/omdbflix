@@ -1,44 +1,34 @@
 import dotenv from 'dotenv';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
-// Load environment variables from .env file
+// Get the directory name in an ESM-compatible way
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load environment variables from .env file using the ESM-compatible __dirname
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
-// Define the expected structure of your configuration
-interface AppConfig {
-  port: string | number;
-  nodeEnv: string;
-  omdbApiKey: string | undefined;
-  omdbApiUrl: string;
-  redisUrl: string | undefined; // Added for Redis cache
-  jwtSecret: string;
-  sessionSecret: string;
-  // Removed OAuth variables
-  frontendURL: string; 
-}
-
-// Load and export configuration
-export const config: AppConfig = {
-  port: process.env.BACKEND_PORT || 3001,
+// Define and export configuration
+export const config = {
+  port: process.env.BACKEND_PORT || 5000,
   nodeEnv: process.env.NODE_ENV || 'development',
   omdbApiKey: process.env.OMDB_API_KEY,
   omdbApiUrl: process.env.OMDB_API_URL || 'http://www.omdbapi.com',
   redisUrl: process.env.REDIS_URL, // e.g., redis://localhost:6379
-  jwtSecret: process.env.JWT_SECRET || 'default_jwt_secret_change_me', 
+  jwtSecret: process.env.JWT_SECRET || 'default_jwt_secret_change_me',
   sessionSecret: process.env.SESSION_SECRET || 'default_session_secret_change_me',
-  // Removed OAuth variables
   frontendURL: process.env.FRONTEND_URL || 'http://localhost:3000',
 };
 
 // Validate essential configuration
-export function validateConfig(): void {
+export function validateConfig() {
   // Skip validation in test mode
   if (process.env.NODE_ENV === 'test') {
     return;
   }
 
-  // Removed OAuth variables from required list
-  const requiredConfig: (keyof AppConfig)[] = [
+  const requiredConfig = [
     'omdbApiKey',
     'jwtSecret',
     'sessionSecret',
@@ -55,7 +45,7 @@ export function validateConfig(): void {
     `);
     process.exit(1);
   }
-  
+
   // Warn about default secrets if not in production
   if (config.nodeEnv !== 'production') {
       if (config.jwtSecret === 'default_jwt_secret_change_me') {

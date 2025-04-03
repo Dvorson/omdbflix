@@ -44,7 +44,7 @@ const fileFormat = winston.format.combine(
 );
 
 // Define transports
-const transports: winston.transport[] = [
+const transports = [
   // Console transport
   new winston.transports.Console({
     format: consoleFormat,
@@ -53,6 +53,10 @@ const transports: winston.transport[] = [
 
 // Add file transports in production
 if (process.env.NODE_ENV === 'production') {
+  // Ensure logs directory exists (simple sync check for startup)
+  if (!fs.existsSync('./logs')) {
+      fs.mkdirSync('./logs');
+  }
   // Error log file
   transports.push(
     new winston.transports.File({
@@ -61,7 +65,7 @@ if (process.env.NODE_ENV === 'production') {
       format: fileFormat,
     })
   );
-  
+
   // All logs file
   transports.push(
     new winston.transports.File({
@@ -78,9 +82,9 @@ export const logger = winston.createLogger({
   transports,
 });
 
-// Export a stream for Morgan HTTP logging
-export const morganStream = {
-  write: (message: string) => {
-    logger.http(message.trim());
-  },
-}; 
+// Export a stream for Morgan HTTP logging (if needed, Morgan would be an added dependency)
+// export const morganStream = {
+//   write: (message) => {
+//     logger.http(message.trim());
+//   },
+// }; 

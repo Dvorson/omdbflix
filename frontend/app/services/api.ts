@@ -34,8 +34,14 @@ apiClient.interceptors.response.use(undefined, async (error) => {
 
 apiClient.interceptors.request.use(
   (config) => {
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    const currentToken = getToken(); // Get the token from storage
+    if (currentToken) {
+      // Ensure "Bearer " prefix is only added once
+      if (currentToken.startsWith('Bearer ')) {
+        config.headers.Authorization = currentToken;
+      } else {
+        config.headers.Authorization = `Bearer ${currentToken}`;
+      }
     }
     console.log(`Making request to: ${config.baseURL}${config.url}`);
     return config;

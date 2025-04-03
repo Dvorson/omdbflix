@@ -18,13 +18,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-white`}>
+      <body className={`${inter.className} flex min-h-screen flex-col bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-white`}>
         <AuthProvider>
           <Header />
-          <main className="container mx-auto my-8 px-4">
+          <main className="container mx-auto my-8 flex-grow px-4">
             {children}
           </main>
-          <footer className="mt-16 bg-white py-6 dark:bg-gray-800">
+          <footer className="mt-auto bg-white py-6 dark:bg-gray-800">
             <div className="container mx-auto px-4 text-center text-sm text-gray-600 dark:text-gray-400">
               <p>© {new Date().getFullYear()} Movie Explorer. All rights reserved.</p>
               <p className="mt-2">Data provided by OMDb API.</p>

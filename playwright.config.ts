@@ -72,7 +72,6 @@ const config: PlaywrightTestConfig = {
     env: {
       OMDB_API_KEY: '60babe8f',
       NODE_ENV: 'test',
-      PORT: '5000',
       NEXT_PUBLIC_API_URL: 'http://localhost:5000'
     },
   },

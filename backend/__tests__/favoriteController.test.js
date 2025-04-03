@@ -1,23 +1,19 @@
+import { describe, it, beforeAll, beforeEach, expect, vi } from 'vitest';
 import request from 'supertest';
-import app from '../src/app';
-import { getDb, initDatabase, closeDatabase } from '../src/utils/db';
-import { User } from '../src/models/User';
+import app from '../src/app.js';
 import Database from 'better-sqlite3';
 
 // --- Mocks ---
 
 // We need to mock passport differently for different tests
-jest.mock('passport', () => {
-  const originalPassport = jest.requireActual('passport');
-  
-  return {
-    ...originalPassport,
-    initialize: jest.fn(() => (req, res, next) => next()),
-    session: jest.fn(() => (req, res, next) => next()),
-    use: jest.fn(),
-    serializeUser: jest.fn(),
-    deserializeUser: jest.fn(),
-    authenticate: jest.fn().mockImplementation(() => {
+vi.mock('passport', async () => {
+  const mockPassport = {
+    initialize: vi.fn(() => (req, res, next) => next()),
+    session: vi.fn(() => (req, res, next) => next()),
+    use: vi.fn(),
+    serializeUser: vi.fn(),
+    deserializeUser: vi.fn(),
+    authenticate: vi.fn().mockImplementation(() => {
       return (req, res, next) => {
         // For tests that expect 401 responses without Authorization header
         if (!req.headers.authorization) {
@@ -34,82 +30,102 @@ jest.mock('passport', () => {
       };
     })
   };
+  
+  return {
+    default: mockPassport,
+    ...mockPassport
+  };
 });
 
 // Mock the passport strategy modules
-jest.mock('passport-local', () => ({
-  Strategy: class LocalStrategy {
-    constructor(options, verify) {
-      // Store options and verify callback if needed
+vi.mock('passport-local', () => {
+  return {
+    Strategy: class LocalStrategy {
+      constructor(options, verify) {
+        // Store options and verify callback if needed
+      }
     }
-  }
-}));
-
-jest.mock('passport-jwt', () => ({
-  Strategy: class JwtStrategy {
-    constructor(options, verify) {
-      // Store options and verify callback if needed
-    }
-  },
-  ExtractJwt: {
-    fromAuthHeaderAsBearerToken: () => () => {}
-  }
-}));
-
-// Mock the User model (specifically findById for JWT strategy)
-jest.mock('../src/models/User', () => ({
-    User: {
-        findById: jest.fn(),
-        // Other methods not directly needed if we mock DB for favorites
-    },
-    __esModule: true,
-}));
-
-// Mock the DB utility functions, providing a mock DB object
-let mockDbRunResult: Database.RunResult = { changes: 0, lastInsertRowid: 0 };
-let mockDbAllResult: any[] = [];
-const mockDb = {
-    prepare: jest.fn().mockReturnThis(),
-    run: jest.fn().mockImplementation(() => mockDbRunResult),
-    all: jest.fn().mockImplementation(() => mockDbAllResult),
-    get: jest.fn()
-};
-
-// Custom mock implementation for run that can handle different test cases
-mockDb.run.mockImplementation((userId, movieId) => {
-    // For "should remove a favorite successfully" test
-    if (movieId === 'tt1234567' && userId === 1) {
-        return { changes: 1, lastInsertRowid: 0 };
-    }
-    
-    // For "should return 404 if favorite was not found" test
-    if (movieId === 'tt9876543' && userId === 1) {
-        return { changes: 0, lastInsertRowid: 0 };
-    }
-    
-    // Default
-    return mockDbRunResult;
+  };
 });
 
-jest.mock('../src/utils/db', () => ({
-    initDatabase: jest.fn(),
-    getDb: jest.fn(() => mockDb), // Return the mock DB object
-    closeDatabase: jest.fn(),
-}));
+vi.mock('passport-jwt', () => {
+  return {
+    Strategy: class JwtStrategy {
+      constructor(options, verify) {
+        // Store options and verify callback if needed
+      }
+    },
+    ExtractJwt: {
+      fromAuthHeaderAsBearerToken: () => () => {}
+    }
+  };
+});
 
-// Type assertion for mocked User model
-const MockedUser = User as jest.Mocked<typeof User>;
+// Mock the User model (specifically findById for JWT strategy)
+vi.mock('../src/models/User.js', () => {
+  return {
+    User: {
+      findById: vi.fn(),
+      // Other methods not directly needed if we mock DB for favorites
+    },
+    __esModule: true
+  };
+});
+
+// Mock the DB utility functions, providing a mock DB object
+let mockDbRunResult = { changes: 0, lastInsertRowid: 0 };
+let mockDbAllResult = [];
+
+vi.mock('../src/utils/db.js', () => {
+  return {
+    initDatabase: vi.fn(),
+    getDb: vi.fn(), // Actual mock implementation moved to beforeAll
+    closeDatabase: vi.fn(),
+    __esModule: true
+  };
+});
 
 // --- Test Suite ---
 
 describe('Favorites API', () => {
+    let User, getDb, MockedUser, mockDb;
+
+    beforeAll(async () => {
+        // Dynamically import modules after mocks are defined
+        const userModule = await import('../src/models/User.js');
+        User = userModule.User;
+        const dbModule = await import('../src/utils/db.js');
+        getDb = dbModule.getDb;
+
+        // Setup mocks that depend on the dynamically imported modules
+        MockedUser = User;
+        mockDb = {
+            prepare: vi.fn().mockReturnThis(),
+            run: vi.fn().mockImplementation((userId, movieId) => {
+                // For "should remove a favorite successfully" test
+                if (movieId === 'tt1234567' && userId === 1) {
+                    return { changes: 1, lastInsertRowid: 0 };
+                }
+                // For "should return 404 if favorite was not found" test
+                if (movieId === 'tt9876543' && userId === 1) {
+                    return { changes: 0, lastInsertRowid: 0 };
+                }
+                // Default
+                return mockDbRunResult;
+            }),
+            all: vi.fn().mockImplementation(() => mockDbAllResult),
+            get: vi.fn()
+        };
+        getDb.mockImplementation(() => mockDb); // Apply mock implementation
+    });
+
     const testUserId = 1;
     const mockValidToken = 'Bearer valid-user-token'; // Assume this token passes JWT strategy
     const testMovieId1 = 'tt1234567';
     const testMovieId2 = 'tt9876543';
 
     beforeEach(() => {
-        jest.clearAllMocks();
+        vi.clearAllMocks();
         // Mock User.findById for JWT strategy to succeed
         MockedUser.findById.mockResolvedValue({ id: testUserId, name: 'Test', email: 'test@test.com' });
         // Reset mock DB results
@@ -182,9 +198,9 @@ describe('Favorites API', () => {
         });
 
         it('should return 409 if favorite already exists (UNIQUE constraint)', async () => {
-            const error = new Error('UNIQUE constraint failed') as any;
+            const error = new Error('UNIQUE constraint failed');
             error.code = 'SQLITE_CONSTRAINT_UNIQUE';
-            (mockDb.run as jest.Mock).mockImplementationOnce(() => { throw error; });
+            mockDb.run.mockImplementationOnce(() => { throw error; });
 
             const res = await request(app)
                 .post('/api/favorites')

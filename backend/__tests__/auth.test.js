@@ -1,18 +1,17 @@
+import { describe, it, beforeAll, beforeEach, afterEach, expect, vi } from 'vitest';
 import request from 'supertest';
-import app from '../src/app'; // Assuming app is correctly exported after initialization
-import { getDb, initDatabase as _initDatabase, closeDatabase as _closeDatabase } from '../src/utils/db'; // Import DB utils
-import { User } from '../src/models/User'; // Import User model
+import app from '../src/app.js'; // Assuming app is correctly exported after initialization
 import _Database from 'better-sqlite3';
 
 // Mock passport and passport strategies
-jest.mock('passport', () => {
-  return {
-    initialize: jest.fn(() => (req, res, next) => next()),
-    session: jest.fn(() => (req, res, next) => next()),
-    use: jest.fn(),
-    serializeUser: jest.fn(),
-    deserializeUser: jest.fn(),
-    authenticate: jest.fn().mockImplementation((strategy, _options = {}) => {
+vi.mock('passport', async () => {
+  const mockPassport = {
+    initialize: vi.fn(() => (req, res, next) => next()),
+    session: vi.fn(() => (req, res, next) => next()),
+    use: vi.fn(),
+    serializeUser: vi.fn(),
+    deserializeUser: vi.fn(),
+    authenticate: vi.fn().mockImplementation((strategy, _options = {}) => {
       if (strategy === 'jwt') {
         return (req, res, next) => {
           if (req.headers.authorization === 'Bearer invalid-or-expired-token') {
@@ -39,63 +38,83 @@ jest.mock('passport', () => {
       return (req, res, next) => next();
     })
   };
+  
+  return {
+    default: mockPassport,
+    ...mockPassport
+  };
 });
 
 // Mock the passport strategy modules
-jest.mock('passport-local', () => ({
-  Strategy: class LocalStrategy {
-    constructor(_options, _verify) {
-      // Store options and verify callback if needed
+vi.mock('passport-local', () => {
+  return {
+    Strategy: class LocalStrategy {
+      constructor(_options, _verify) {
+        // Store options and verify callback if needed
+      }
     }
-  }
-}));
+  };
+});
 
-jest.mock('passport-jwt', () => ({
-  Strategy: class JwtStrategy {
-    constructor(_options, _verify) {
-      // Store options and verify callback if needed
+vi.mock('passport-jwt', () => {
+  return {
+    Strategy: class JwtStrategy {
+      constructor(_options, _verify) {
+        // Store options and verify callback if needed
+      }
+    },
+    ExtractJwt: {
+      fromAuthHeaderAsBearerToken: () => () => {}
     }
-  },
-  ExtractJwt: {
-    fromAuthHeaderAsBearerToken: () => () => {}
-  }
-}));
+  };
+});
 
 // Mock the User model static methods used by controllers/passport
-jest.mock('../src/models/User', () => ({
-  User: {
-    findByEmail: jest.fn(),
-    create: jest.fn(),
-    comparePassword: jest.fn(),
-    generateToken: jest.fn().mockReturnValue('mock-jwt-token'), // Mock token generation
-    findById: jest.fn(), // Mock findById used by JWT strategy
-  },
-  __esModule: true, // Needed for ES module mocking
-}));
+vi.mock('../src/models/User.js', () => {
+  return {
+    User: {
+      findByEmail: vi.fn(),
+      create: vi.fn(),
+      comparePassword: vi.fn(),
+      generateToken: vi.fn().mockReturnValue('mock-jwt-token'), // Mock token generation
+      findById: vi.fn(), // Mock findById used by JWT strategy
+    },
+    __esModule: true // Needed for ES module mocking
+  };
+});
 
 // Mock the database utility functions
-jest.mock('../src/utils/db', () => ({
-    initDatabase: jest.fn(), // Mock initDatabase to prevent actual DB init during test setup
-    getDb: jest.fn(),
-    closeDatabase: jest.fn(),
-}));
-
-// Type assertion for mocked User model
-const MockedUser = User as jest.Mocked<typeof User>;
-
-// Create a mock database function to handle when getDb is called
-const mockDbPrepare = jest.fn().mockImplementation(() => ({
-  get: jest.fn(),
-  run: jest.fn().mockReturnValue({ lastInsertRowid: 2 })
-}));
-
-// Mock getDb to return an object with a prepare method
-(getDb as jest.Mock).mockImplementation(() => ({
-  prepare: mockDbPrepare
-}));
+vi.mock('../src/utils/db.js', () => {
+  return {
+    initDatabase: vi.fn(), // Mock initDatabase to prevent actual DB init during test setup
+    getDb: vi.fn(),
+    closeDatabase: vi.fn(),
+    __esModule: true // Add this to ensure proper ES module mocking
+  };
+});
 
 describe('Auth API (Local + JWT)', () => {
     
+    let User, getDb, MockedUser, mockDbPrepare;
+
+    beforeAll(async () => {
+        // Dynamically import modules after mocks are defined
+        const userModule = await import('../src/models/User.js');
+        User = userModule.User;
+        const dbModule = await import('../src/utils/db.js');
+        getDb = dbModule.getDb;
+
+        // Setup mocks that depend on the dynamically imported modules
+        MockedUser = User; 
+        mockDbPrepare = vi.fn().mockImplementation(() => ({
+          get: vi.fn(),
+          run: vi.fn().mockReturnValue({ lastInsertRowid: 2 })
+        }));
+        getDb.mockImplementation(() => ({
+          prepare: mockDbPrepare
+        }));
+    });
+
     // Mock user data for reuse
     const testUser = {
         id: 1,
@@ -115,7 +134,7 @@ describe('Auth API (Local + JWT)', () => {
 
     beforeEach(() => {
         // Reset mocks before each test
-        jest.clearAllMocks();
+        vi.clearAllMocks();
     });
 
     describe('POST /api/auth/register', () => {
@@ -173,7 +192,7 @@ describe('Auth API (Local + JWT)', () => {
                 .send(registerUserData);
             
             expect(res.status).toBe(500);
-            expect(res.body.message).toBe('Cannot read properties of undefined (reading \'prepare\')');
+            expect(res.body.message).toBe('DB Error');
         });
     });
 

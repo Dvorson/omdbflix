@@ -1,4 +1,4 @@
-import { validateYearParameter } from '../utils/validation';
+import { validateYearParameter } from '../src/utils/validation.js';
 
 describe('Year Parameter Validation', () => {
   test('should accept valid 4-digit years', () => {
