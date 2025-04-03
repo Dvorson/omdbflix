@@ -120,15 +120,42 @@ jobs:
         FRONTEND_URL: http://localhost:3000
         NEXT_PUBLIC_API_URL: http://localhost:5000
         DEBUG: "app:*,api:*"
+        BACKEND_PORT: 5000
+        HOST: "0.0.0.0" # Ensure server binds to all interfaces
 
     # Add a wait step for the webServer URL to be ready
     - name: Wait for Frontend Server (Port 3000)
       run: npx wait-on http://localhost:3000 --timeout 120000 # Wait up to 120s
 
+    # Debugging: Check server status and logs
+    - name: Check Server Status
+      run: |
+        echo "Checking running processes..."
+        ps aux | grep node
+        echo "Checking if ports are in use..."
+        netstat -tulpn | grep LISTEN
+        echo "Checking backend logs..."
+        tail -n 50 $(find . -name "*.log" -type f -print)
+        echo "Checking network connectivity..."
+        curl -v http://localhost:5000/api/health || echo "Backend not accessible"
+
     # Also wait for the backend server to be ready
     - name: Wait for Backend Server (Port 5000)
-      run: npx wait-on http://localhost:5000 --timeout 120000 # Wait up to 120s
-    
+      run: |
+        # Try multiple ways to check the backend
+        echo "Trying healthcheck endpoint with retry logic..."
+        for i in {1..20}; do
+          if curl -s http://localhost:5000/api/health; then
+            echo "Backend is up!"
+            exit 0
+          else
+            echo "Backend not ready, retrying in 3s (attempt $i/20)..."
+            sleep 3
+          fi
+        done
+        echo "Backend server failed to start properly"
+        exit 1
+
     # Debug URLs that we're trying to connect to
     - name: Debug - Check server connectivity
       run: |

@@ -12,6 +12,7 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 // Define and export configuration
 export const config = {
   port: process.env.BACKEND_PORT || 5000,
+  host: process.env.HOST || '0.0.0.0', // Default to all interfaces for container compatibility
   nodeEnv: process.env.NODE_ENV || 'development',
   omdbApiKey: process.env.OMDB_API_KEY,
   omdbApiUrl: process.env.OMDB_API_URL || 'http://www.omdbapi.com',

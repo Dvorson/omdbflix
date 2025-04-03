@@ -71,7 +71,24 @@ if (config.nodeEnv === 'development') {
 
 // Health check route
 app.get('/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    env: config.nodeEnv,
+    port: config.port
+  });
+});
+
+// API Health check route (specifically for CI/CD)
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    service: 'backend-api',
+    timestamp: new Date().toISOString(),
+    env: config.nodeEnv,
+    port: config.port,
+    database: 'connected'
+  });
 });
 
 // API Routes

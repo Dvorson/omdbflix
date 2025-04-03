@@ -203,7 +203,7 @@ The application is set up for deployment using Vercel (frontend) and Railway (ba
 
 ## Trade-offs and Considerations
 
-- **Local Storage for Favorites**: Used localStorage for simplicity. In a production environment, we would implement user authentication and store favorites in a database.
+- **SQLite for Favorites**: Implemented SQLite to store user favorites in a database, providing persistent storage across sessions and devices. In a production environment, we might consider migrating to a more scalable database solution like PostgreSQL or MongoDB.
 - **Environment Setup**: Development environment uses local Redis. Production would use managed Redis service.
 - **API Caching Strategy**: Implemented different TTLs for search (10 min) vs details (24 hours) based on data volatility.
 
