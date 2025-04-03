@@ -160,6 +160,9 @@ test('should handle non-numeric year values gracefully', async ({ page }) => {
   // Wait for search results to load
   await page.waitForLoadState('networkidle');
   
+  // Ensure the first search completes and button is enabled before proceeding
+  await expect(searchButton, 'Search button should be enabled after first search').toBeEnabled({ timeout: 20000 });
+  
   // Look for results in various container formats
   const resultContainerSelectors = [
     'div[class*="grid"]', 
@@ -182,6 +185,9 @@ test('should handle non-numeric year values gracefully', async ({ page }) => {
   
   // Wait for search results to load
   await page.waitForLoadState('networkidle');
+  
+  // Ensure the second search completes and button is enabled before proceeding
+  await expect(searchButton, 'Search button should be enabled after second search').toBeEnabled({ timeout: 20000 });
   
   // Verify the app is still functioning by seeing if we get a response
   await searchInput.clear();

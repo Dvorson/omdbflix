@@ -10,6 +10,8 @@ test('search for movies and view details', async ({ page }) => {
   
   // Search for a movie
   await page.fill('input[placeholder*="Search"]', 'Matrix');
+  // Add a wait after filling to allow state update, potentially helping WebKit
+  await page.waitForLoadState('networkidle', { timeout: 5000 }); 
   
   // Wait for the search button to be enabled, longer timeout for WebKit
   const webkitTimeout = 20000; // Increased timeout for WebKit

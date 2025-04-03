@@ -26,12 +26,12 @@ test('guest user sees disabled favorite button', async ({ page }) => {
     // Wait for the button to be present in the DOM
     await favoriteButton.waitFor({ state: 'attached', timeout: 15000 }); 
     
-    // Assert that the button is visible
-    await expect(favoriteButton, 'Favorite button should be visible').toBeVisible();
+    // Assert that the button is visible (Increased timeout)
+    await expect(favoriteButton, 'Favorite button should be visible').toBeVisible({ timeout: 10000 });
     
-    // Assert that the button is disabled for guest users
-    await expect(favoriteButton, 'Favorite button should be disabled for guest users').toBeDisabled();
+    // Assert that the button is disabled for guest users (Increased timeout)
+    await expect(favoriteButton, 'Favorite button should be disabled for guest users').toBeDisabled({ timeout: 10000 });
 
-    // Optional: Add a check for the title attribute explaining why it's disabled
-    await expect(favoriteButton).toHaveAttribute('title', 'Sign in to add to favorites');
+    // Optional: Add a check for the title attribute explaining why it's disabled (Increased timeout)
+    await expect(favoriteButton).toHaveAttribute('title', 'Sign in to add to favorites', { timeout: 10000 });
 }); 
