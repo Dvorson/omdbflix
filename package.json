@@ -1,5 +1,5 @@
 {
-  "name": "ziggo-movie-database",
+  "name": "omdbflix",
   "version": "1.0.0",
   "private": true,
   "workspaces": [
@@ -74,7 +74,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/ziggo-movie-database.git"
+    "url": "https://github.com/dvorson/omdbflix.git"
   },
   "husky": {
     "hooks": {

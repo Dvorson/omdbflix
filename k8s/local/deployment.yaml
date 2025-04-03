@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: ziggo-frontend:latest
+        image: omdbflix-frontend:latest
         imagePullPolicy: Never # Use locally built image
         ports:
         - containerPort: 3000
@@ -61,7 +61,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image: ziggo-backend:latest
+        image: omdbflix-backend:latest
         imagePullPolicy: Never # Use locally built image
         ports:
         - containerPort: 5000

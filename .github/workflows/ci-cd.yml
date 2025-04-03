@@ -118,18 +118,34 @@ jobs:
         JWT_SECRET: test_jwt_secret_for_ci
         SESSION_SECRET: test_session_secret_for_ci
         FRONTEND_URL: http://localhost:3000
+        NEXT_PUBLIC_API_URL: http://localhost:5000
+        DEBUG: "app:*,api:*"
 
     # Add a wait step for the webServer URL to be ready
     - name: Wait for Frontend Server (Port 3000)
       run: npx wait-on http://localhost:3000 --timeout 120000 # Wait up to 120s
 
+    # Also wait for the backend server to be ready
+    - name: Wait for Backend Server (Port 5000)
+      run: npx wait-on http://localhost:5000 --timeout 120000 # Wait up to 120s
+    
+    # Debug URLs that we're trying to connect to
+    - name: Debug - Check server connectivity
+      run: |
+        echo "Checking frontend connectivity..."
+        curl -sSf http://localhost:3000 > /dev/null && echo "Frontend is up!" || echo "Frontend is not responding"
+        echo "Checking backend connectivity..."
+        curl -sSf http://localhost:5000/api/health > /dev/null && echo "Backend is up!" || echo "Backend is not responding"
+
     - name: Run E2E tests
       # Run from root now
-      run: npx playwright test 
+      run: DEBUG=pw:api npx playwright test 
       env:
         OMDB_API_KEY: ${{ secrets.OMDB_API_KEY }} # Ensure tests have access if needed directly
         E2E_BASE_URL: http://localhost:3000 # Explicitly set base URL
-      
+        NEXT_PUBLIC_API_URL: http://localhost:5000
+        DEBUG: "pw:api"
+
     - name: Upload test results
       if: always()
       uses: actions/upload-artifact@v4

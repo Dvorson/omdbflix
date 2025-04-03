@@ -1,8 +1,8 @@
-# Ziggo Movie Database
+# OMDBflix
 
 A modern, responsive web application for discovering movies, TV shows, and more. Built with Next.js, TypeScript, and Tailwind CSS, featuring a Node.js backend with Redis caching.
 
-![Ziggo Movie Database](docs/screenshots/app-preview.png)
+![OMDBflix](docs/screenshots/app-preview.png)
 
 ## Features
 
@@ -48,8 +48,8 @@ A modern, responsive web application for discovering movies, TV shows, and more.
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/yourusername/ziggo-movie-app.git
-   cd ziggo-movie-app
+   git clone https://github.com/dvorson/omdbflix.git
+   cd omdbflix
    ```
 
 2. Install dependencies:

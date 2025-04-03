@@ -1,13 +1,18 @@
 import { test, expect } from '@playwright/test';
+import { setupTestUser } from './setup-for-ci';
 
 // Test the core search functionality (most critical feature)
 test('search for movies and view details', async ({ page }) => {
-  // Navigate to homepage
+  // Navigate to homepage and set up a test user for auth
   await page.goto('/');
+  await setupTestUser(page);
   await expect(page).toHaveTitle(/Movie Explorer/);
   
   // Search for a movie
   await page.fill('input[placeholder*="Search"]', 'Matrix');
+  
+  // Wait for the search button to be enabled
+  await page.waitForSelector('button[type="submit"]:not([disabled])', { timeout: 10000 });
   await page.click('button[type="submit"]');
   
   // Instead of waiting for a specific API response, wait for the movie cards to appear

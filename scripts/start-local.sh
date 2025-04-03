@@ -11,7 +11,7 @@ NC='\033[0m' # No Color
 echo -e "${BLUE}Starting Redis with Docker...${NC}"
 # Start Redis if not already running
 export DOCKER_HOST=unix:///Users/Anton_Dvorson/.colima/default/docker.sock
-if ! docker ps | grep -q ziggo_assignment-redis; then
+if ! docker ps | grep -q omdbflix-redis; then
   docker-compose up -d redis
 fi
 
