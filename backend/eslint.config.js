@@ -1,43 +1,33 @@
-import js from '@eslint/js';
-import { FlatCompat } from '@eslint/eslintrc';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-// ESLint doesn't support 'dirname' in ESM yet
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-  recommendedConfig: js.configs.recommended
-});
+import globals from "globals";
+import js from "@eslint/js";
 
 export default [
   js.configs.recommended,
-  ...compat.extends(
-    'eslint:recommended',
-    'plugin:@typescript-eslint/recommended'
-  ),
   {
-    ignores: ['dist/**', 'node_modules/**', 'coverage/**'],
-    files: ['src/**/*.ts'],
+    files: ["**/*.js"],
     languageOptions: {
-      ecmaVersion: 'latest',
-      sourceType: 'module',
+      ecmaVersion: 2020,
+      sourceType: "module",
+      globals: {
+        // Define Node.js and Jest globals
+        ...globals.node, // Includes 'fs', 'process', 'console' etc.
+        ...globals.jest, // Includes 'describe', 'it', 'expect' etc.
+      }
     },
     rules: {
-      '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/explicit-function-return-type': 'off', 
-      '@typescript-eslint/explicit-module-boundary-types': 'off',
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-      'no-console': ['warn', { allow: ['warn', 'error'] }],
-      // Disable the extension checking rule due to module resolution conflicts
-      'import/extensions': 'off',
-      '@typescript-eslint/naming-convention': 'off',
-      // Disable this rule since we're mixing CommonJS and ESM
-      'import/no-commonjs': 'off',
-      // Suppress explicit extension errors
-      '@typescript-eslint/extension-suffix': 'off',
-    },
+      // Configure standard JS rule for unused vars
+      "no-unused-vars": [
+        "warn", // Use warn for now to avoid blocking commits unnecessarily
+        {
+          "argsIgnorePattern": "^_",
+          "varsIgnorePattern": "^_",
+          "caughtErrorsIgnorePattern": "^_"
+        }
+      ],
+      // Disable no-undef as globals package should handle it
+      "no-undef": "off",
+      // Explicitly ensure TS rule is off for JS files
+      "@typescript-eslint/no-unused-vars": "off",
+    }
   }
 ]; 

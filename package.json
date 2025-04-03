@@ -54,8 +54,6 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@typescript-eslint/eslint-plugin": "^6.21.0",
-    "@typescript-eslint/parser": "^6.21.0",
     "autoprefixer": "^10.4.16",
     "concurrently": "^8.2.2",
     "eslint": "^8.56.0",
@@ -87,7 +85,7 @@
     "frontend/**/*.{js,jsx,ts,tsx}": [
       "cd frontend && eslint --fix"
     ],
-    "backend/**/*.{js,jsx,ts,tsx}": [
+    "backend/**/*.js": [
       "cd backend && eslint --fix"
     ],
     "*.{json,md}": [

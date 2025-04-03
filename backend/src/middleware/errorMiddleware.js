@@ -11,7 +11,7 @@ export const notFound = (req, res, next) => {
 
 // General error handling middleware
 // eslint-disable-next-line no-unused-vars
-export const errorHandler = (err, req, res, next) => {
+export const errorHandler = (err, req, res, _next) => {
   // Determine status code: use error's status, response status, or default to 500
   const statusCode = err.statusCode || (res.statusCode === 200 ? 500 : res.statusCode) || 500;
 

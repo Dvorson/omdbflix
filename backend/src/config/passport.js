@@ -33,8 +33,10 @@ export default function configurePassport() {
         }
 
         // Success: Return user object (without password)
-        const { password: _, ...userWithoutPassword } = user; // Destructure to exclude password
         logger.info(`Local strategy: User ${email} (ID: ${user.id}) authenticated successfully.`);
+        // Create a copy without the password hash, matching JWT strategy approach
+        const { ...userWithoutPassword } = user.toObject ? user.toObject() : user;
+        delete userWithoutPassword.password;
         return done(null, userWithoutPassword);
 
       } catch (error) {
@@ -64,14 +66,17 @@ export default function configurePassport() {
 
       const user = await User.findById(payload.id);
       if (user) {
-        return done(null, user);
+        // Attach user object without the password hash to the request
+        const { ...userWithoutPassword } = user.toObject();
+        delete userWithoutPassword.password;
+        return done(null, userWithoutPassword);
       } else {
         logger.warn(`JWT strategy: User ID ${payload.id} from token not found in database.`);
-        return done(null, false, { message: 'User associated with token not found.' });
+        return done(null, false, { message: 'Invalid token' });
       }
     } catch (error) {
-      logger.error('Error in JwtStrategy verify function:', error);
-      return done(error, false);
+      logger.error('Error in JWT strategy verify function:', error);
+      return done(error);
     }
   }));
 
@@ -109,4 +114,4 @@ export default function configurePassport() {
   });
 
   logger.info('Passport strategies (Local, JWT) configured.');
-} 
+}

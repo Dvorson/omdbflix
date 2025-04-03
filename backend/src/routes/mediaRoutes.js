@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { searchMediaController, getMediaByIdController } from '../controllers/mediaController.js';
 import { validateSearchParams, validateIdParam } from '../middleware/validation.js';
-import { logger } from '../utils/logger.js';
 
 const router = Router();
 

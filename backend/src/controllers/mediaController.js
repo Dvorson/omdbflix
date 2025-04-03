@@ -10,7 +10,7 @@ export async function searchMediaController(req, res) {
   try {
     // Extract search parameters from query
     // Ensure page is parsed as integer, default to 1
-    const page = req.query.page ? parseInt(req.query.page, 10) : 1;
+    let page = req.query.page ? parseInt(req.query.page, 10) : 1;
     if (isNaN(page) || page < 1) {
         logger.warn('Invalid page number received in controller after validation, defaulting to 1.');
         page = 1; // Default or handle error more strictly if needed
