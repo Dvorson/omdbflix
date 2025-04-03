@@ -11,13 +11,13 @@ A modern, responsive web application for discovering movies, TV shows, and more.
 - 🖤 **Dark Mode**: Toggle between light and dark themes
 - ⭐ **Favorites**: Save your favorite movies for quick access
 - ⚡ **Performance**: Server-side rendering and caching for fast load times
-- 🧪 **Testing**: Comprehensive unit and e2e tests
+- 🧪 **Testing**: Comprehensive unit and e2e tests with Playwright
 
 ## Tech Stack
 
 ### Frontend
 
-- **Next.js** with TypeScript
+- **Next.js 15** with TypeScript and React 19
 - **Tailwind CSS** for styling
 - **React Testing Library** for component testing
 - **Playwright** for end-to-end testing
@@ -27,6 +27,7 @@ A modern, responsive web application for discovering movies, TV shows, and more.
 - **Node.js** API server
 - **Express** for routing
 - **Redis** for caching API responses
+- **SQLite** for data storage (with in-memory option for tests)
 - **Winston** for logging
 
 ### DevOps
@@ -55,12 +56,7 @@ A modern, responsive web application for discovering movies, TV shows, and more.
 2. Install dependencies:
 
    ```bash
-   # Install frontend dependencies
-   cd frontend
-   npm install
-
-   # Install backend dependencies
-   cd ../backend
+   # Install all dependencies from the root
    npm install
    ```
 
@@ -78,42 +74,25 @@ A modern, responsive web application for discovering movies, TV shows, and more.
 
 #### Development mode
 
-1. Start the backend:
+1. Start both frontend and backend concurrently:
 
    ```bash
-   cd backend
    npm run dev
    ```
 
-2. In a separate terminal, start the frontend:
-
-   ```bash
-   cd frontend
-   npm run dev
-   ```
-
-3. Open [http://localhost:3000](http://localhost:3000) in your browser
+   This will start the backend at http://localhost:5000 and the frontend at http://localhost:3000
 
 #### Production mode
 
 1. Build both applications:
 
    ```bash
-   cd frontend
-   npm run build
-
-   cd ../backend
    npm run build
    ```
 
 2. Start the applications:
 
    ```bash
-   cd backend
-   npm start
-
-   # In another terminal
-   cd frontend
    npm start
    ```
 
@@ -146,22 +125,10 @@ This will start the frontend, backend, and Redis services. Access the applicatio
 
 ## Testing
 
-### Frontend Tests
+### Frontend and Backend Tests
 
 ```bash
-cd frontend
-# Run unit tests
-npm test
-
-# Run with coverage
-npm run test:coverage
-```
-
-### Backend Tests
-
-```bash
-cd backend
-# Run unit tests
+# Run all tests
 npm test
 
 # Run with coverage
@@ -173,51 +140,10 @@ npm run test:coverage
 ```bash
 # From project root
 npm run e2e
+
+# With UI mode
+npm run e2e:ui
 ```
-
-## Git Hooks with Husky
-
-This project uses [Husky](https://typicode.github.io/husky/) to enforce code quality through git hooks. The following hooks are configured:
-
-### Pre-commit Hook
-
-The pre-commit hook runs automatically before each commit and performs the following checks:
-
-1. **Linting**: Runs ESLint on staged JS/TS files and Prettier on JSON/MD files
-2. **Type Checking**: Verifies TypeScript types in both frontend and backend
-
-By default, tests are **not** run during commits to keep the process fast.
-
-#### Usage Options
-
-- **Normal commit**: `git commit -m "your message"`
-  - Runs linting and type checking only
-- **Commit with tests**: `TEST_ON_COMMIT=true git commit -m "your message"`
-  - Runs linting, type checking, and unit tests
-  - Commits will proceed even if tests fail (warnings are shown)
-- **Bypass all checks**: `NO_VERIFY=true git commit -m "your message"`
-  - Skips all pre-commit checks (use with caution!)
-
-### E2E Tests
-
-E2E tests run only when specifically requested by adding the `[e2e]` flag to your commit message:
-
-```
-git commit -m "[e2e] Added new feature with E2E tests"
-```
-
-If E2E tests fail, the commit will be blocked. You can bypass this with:
-
-```
-NO_VERIFY=true git commit -m "[e2e] Your message"
-```
-
-### Best Practices
-
-1. Fix failing tests before pushing to the remote repository
-2. Use `NO_VERIFY=true` only in exceptional cases
-3. Run the full test suite locally before submitting PRs
-4. Include E2E tests for critical user flows and major features
 
 ## CI/CD Pipeline
 
@@ -227,11 +153,18 @@ The project uses GitHub Actions for continuous integration and deployment:
 
    - Runs linting and unit tests
    - Verifies build process
+   - Checks type safety
 
 2. On merge to main:
    - Runs all tests including e2e
    - Builds Docker images
-   - Deploys application via Vercel and Railway
+   - Deploys application via Vercel (frontend) and Railway (backend)
+
+The CI/CD pipeline includes optimizations to:
+
+- Reuse the existing server when running e2e tests
+- Provide comprehensive debugging information
+- Create test artifacts for failed tests
 
 ## Deployment
 
