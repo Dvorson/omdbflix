@@ -7,6 +7,31 @@ import { logger } from '../utils/logger.js';
 
 console.log('>>> Loading module: config/passport.js');
 
+// Exported for testing purposes
+export const jwtVerifyFunction = async (payload, done) => {
+  try {
+    if (!payload || typeof payload.id !== 'number') {
+        logger.warn('JWT strategy: Invalid token payload received.', payload);
+        return done(null, false, { message: 'Invalid token payload' });
+    }
+
+    const user = await User.findById(payload.id);
+    if (user) {
+      // Attach user object without the password hash to the request
+      // Conditionally call .toObject() if it exists
+      const userObject = user.toObject ? user.toObject() : user;
+      const { password, ...userWithoutPassword } = userObject;
+      return done(null, userWithoutPassword);
+    } else {
+      logger.warn(`JWT strategy: User ID ${payload.id} from token not found in database.`);
+      return done(null, false, { message: 'Invalid token' });
+    }
+  } catch (error) {
+    logger.error('Error in JWT strategy verify function:', error);
+    return done(error);
+  }
+};
+
 export default function configurePassport() {
 
   // --- Local Strategy (Email/Password Login) ---
@@ -57,28 +82,8 @@ export default function configurePassport() {
     // return; // Don't configure JWT strategy if secret is missing/default
   }
 
-  passport.use(new JwtStrategy(jwtOptions, async (payload, done) => {
-    try {
-      if (!payload || typeof payload.id !== 'number') {
-          logger.warn('JWT strategy: Invalid token payload received.', payload);
-          return done(null, false, { message: 'Invalid token payload' });
-      }
-
-      const user = await User.findById(payload.id);
-      if (user) {
-        // Attach user object without the password hash to the request
-        const { ...userWithoutPassword } = user.toObject();
-        delete userWithoutPassword.password;
-        return done(null, userWithoutPassword);
-      } else {
-        logger.warn(`JWT strategy: User ID ${payload.id} from token not found in database.`);
-        return done(null, false, { message: 'Invalid token' });
-      }
-    } catch (error) {
-      logger.error('Error in JWT strategy verify function:', error);
-      return done(error);
-    }
-  }));
+  // Use the exported verify function
+  passport.use(new JwtStrategy(jwtOptions, jwtVerifyFunction));
 
   // --- Session Management (Serialization/Deserialization) ---
   // These are needed if using Express sessions alongside Passport (even if JWT is primary for API)

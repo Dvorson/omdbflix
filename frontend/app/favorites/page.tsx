@@ -62,7 +62,7 @@ export default function FavoritesPage() {
   if (!isAuthenticated) {
     return (
       <div className="container mx-auto px-4 py-8 text-center" data-testid="favorites-container">
-        <p>Please <Link href="#" onClick={(e) => { e.preventDefault(); }} className="text-blue-600 hover:underline">sign in</Link> to view your favorites.</p>
+        <p>Please <Link href="/" className="text-blue-600 hover:underline">sign in</Link> to view your favorites.</p>
       </div>
     );
   }

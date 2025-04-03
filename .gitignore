@@ -75,4 +75,14 @@ mobile-*.png
 favorites-*.png
 initial-*.png
 *-error.png
-*-timeout.png 
+*-timeout.png
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+*-shm
+*-wal
+
+# Log files
+*.log 
