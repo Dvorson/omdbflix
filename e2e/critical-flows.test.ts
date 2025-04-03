@@ -11,8 +11,13 @@ test('search for movies and view details', async ({ page }) => {
   // Search for a movie
   await page.fill('input[placeholder*="Search"]', 'Matrix');
   
-  // Wait for the search button to be enabled
-  await page.waitForSelector('button[type="submit"]:not([disabled])', { timeout: 10000 });
+  // Wait for the search button to be enabled, longer timeout for WebKit
+  const webkitTimeout = 20000; // Increased timeout for WebKit
+  const defaultTimeout = 10000;
+  const browserName = (page.context().browser()?.browserType().name());
+  const waitTimeout = browserName === 'webkit' ? webkitTimeout : defaultTimeout;
+  
+  await page.waitForSelector('button[type="submit"]:not([disabled])', { timeout: waitTimeout });
   await page.click('button[type="submit"]');
   
   // Instead of waiting for a specific API response, wait for the movie cards to appear

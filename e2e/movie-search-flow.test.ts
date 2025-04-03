@@ -186,6 +186,11 @@ test('should handle non-numeric year values gracefully', async ({ page }) => {
   // Verify the app is still functioning by seeing if we get a response
   await searchInput.clear();
   await searchInput.fill('Inception 2010');
+  
+  // Wait for the search button to become enabled *before* clicking
+  // This ensures any previous search has finished updating the loading state.
+  await expect(searchButton, 'Search button should be enabled before clicking').toBeEnabled({ timeout: 15000 });
+  
   await searchButton.click();
   
   // This search should definitely return results
